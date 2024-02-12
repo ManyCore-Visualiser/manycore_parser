@@ -1,5 +1,7 @@
 //! A parser for Manycore System XML configuration files
 
+use std::{collections::HashMap, hash::Hash};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -29,7 +31,7 @@ pub struct TaskGraph {
     edges: Vec<Edge>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum RouterStatus {
     Broken,
     Normal,
@@ -41,7 +43,7 @@ impl Default for RouterStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Router {
     #[serde(rename = "@age")]
     age: u8,
@@ -51,7 +53,7 @@ pub struct Router {
     status: RouterStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum CoreStatus {
     Broken,
     Low,
@@ -65,7 +67,7 @@ impl Default for CoreStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Core {
     #[serde(rename = "@id")]
     id: u8,
@@ -81,10 +83,59 @@ pub struct Core {
     allocated_task: Option<u16>,
 }
 
+impl Hash for Core {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // We can take a shortcut here as IDs are unique for our cores
+        self.id.hash(state);
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Cores {
     #[serde(rename = "Core")]
-    list: Vec<Core>,
+    pub list: Vec<Core>,
+}
+
+#[derive(Default, Debug, PartialEq)]
+pub struct Neighbours {
+    top: Option<usize>,
+    right: Option<usize>,
+    bottom: Option<usize>,
+    left: Option<usize>,
+}
+
+impl Neighbours {
+    pub fn top(&self) -> Option<usize> {
+        self.top
+    }
+
+    pub fn set_top(&mut self, top: Option<usize>) {
+        self.top = top;
+    }
+
+    pub fn right(&self) -> Option<usize> {
+        self.right
+    }
+
+    pub fn set_right(&mut self, right: Option<usize>) {
+        self.right = right;
+    }
+
+    pub fn bottom(&self) -> Option<usize> {
+        self.bottom
+    }
+
+    pub fn set_bottom(&mut self, bottom: Option<usize>) {
+        self.bottom = bottom;
+    }
+
+    pub fn left(&self) -> Option<usize> {
+        self.left
+    }
+
+    pub fn set_left(&mut self, left: Option<usize>) {
+        self.left = left;
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -99,20 +150,59 @@ pub struct ManycoreSystem {
     #[serde(rename(serialize = "@xsi:schemaLocation", deserialize = "@schemaLocation"))]
     xsi_schema_location: String,
     #[serde(rename = "@rows")]
-    rows: u8,
+    pub rows: u8,
     #[serde(rename = "@columns")]
-    columns: u8,
+    pub columns: u8,
     #[serde(rename = "@routing_algo")]
     routing_algo: String,
     task_graph: TaskGraph,
-    cores: Cores,
+    pub cores: Cores,
+    #[serde(skip)]
+    pub connections: HashMap<usize, Neighbours>,
 }
 
 impl ManycoreSystem {
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, Box<dyn std::error::Error>> {
         let file_content = std::fs::read_to_string(path)?;
 
-        let manycore: ManycoreSystem = quick_xml::de::from_str(&file_content)?;
+        let mut manycore: ManycoreSystem = quick_xml::de::from_str(&file_content)?;
+
+        // Sort cores by id
+        manycore
+            .cores
+            .list
+            .sort_by(|me, other| me.id.cmp(&other.id));
+
+        let usize_columns = usize::from(manycore.columns);
+        let last = manycore.cores.list.len() - 1;
+        for i in 0..=last {
+            let right = i + 1;
+            let top = i >= usize_columns;
+            let bottom = i + usize_columns;
+            let mut neighbours = Neighbours::default();
+
+            // Right
+            if right % usize_columns != 0 {
+                neighbours.set_right(Some(right));
+            }
+
+            // Left
+            if i % usize_columns != 0 {
+                neighbours.set_left(Some(i - 1));
+            }
+
+            // Top
+            if top {
+                neighbours.set_top(Some(i - usize_columns));
+            }
+
+            // Bottom
+            if bottom <= last {
+                neighbours.set_bottom(Some(bottom));
+            }
+
+            manycore.connections.insert(i, neighbours);
+        }
 
         Ok(manycore)
     }
@@ -120,8 +210,11 @@ impl ManycoreSystem {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{
-        Core, CoreStatus, Cores, Edge, ManycoreSystem, Router, RouterStatus, Task, TaskGraph,
+        Core, CoreStatus, Cores, Edge, ManycoreSystem, Neighbours, Router, RouterStatus, Task,
+        TaskGraph,
     };
 
     #[test]
@@ -284,6 +377,90 @@ mod tests {
             },
         ];
 
+        let expected_connections: HashMap<usize, Neighbours> = HashMap::from([
+            (
+                0,
+                Neighbours {
+                    top: None,
+                    right: Some(1),
+                    bottom: Some(3),
+                    left: None,
+                },
+            ),
+            (
+                1,
+                Neighbours {
+                    top: None,
+                    right: Some(2),
+                    bottom: Some(4),
+                    left: Some(0),
+                },
+            ),
+            (
+                2,
+                Neighbours {
+                    top: None,
+                    right: None,
+                    bottom: Some(5),
+                    left: Some(1),
+                },
+            ),
+            (
+                3,
+                Neighbours {
+                    top: Some(0),
+                    right: Some(4),
+                    bottom: Some(6),
+                    left: None,
+                },
+            ),
+            (
+                4,
+                Neighbours {
+                    top: Some(1),
+                    right: Some(5),
+                    bottom: Some(7),
+                    left: Some(3),
+                },
+            ),
+            (
+                5,
+                Neighbours {
+                    top: Some(2),
+                    right: None,
+                    bottom: Some(8),
+                    left: Some(4),
+                },
+            ),
+            (
+                6,
+                Neighbours {
+                    top: Some(3),
+                    right: Some(7),
+                    bottom: None,
+                    left: None,
+                },
+            ),
+            (
+                7,
+                Neighbours {
+                    top: Some(4),
+                    right: Some(8),
+                    bottom: None,
+                    left: Some(6),
+                },
+            ),
+            (
+                8,
+                Neighbours {
+                    top: Some(5),
+                    right: None,
+                    bottom: None,
+                    left: Some(7),
+                },
+            ),
+        ]);
+
         let expected_manycore = ManycoreSystem {
             xmlns: String::from(
                 "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
@@ -297,6 +474,7 @@ mod tests {
                 list: expected_cores,
             },
             task_graph: expected_graph,
+            connections: expected_connections
         };
 
         let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
