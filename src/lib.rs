@@ -1,102 +1,19 @@
 //! A parser for Manycore System XML configuration files
 
-use std::{collections::HashMap, hash::Hash};
+mod cores;
+mod graph;
+mod router;
 
+use std::collections::HashMap;
+
+pub use crate::cores::*;
+pub use crate::graph::*;
+pub use crate::router::*;
+use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct Edge {
-    #[serde(rename = "@from")]
-    from: u16,
-    #[serde(rename = "@to")]
-    to: u16,
-    #[serde(rename = "@communicationCost")]
-    communication_cost: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Task {
-    #[serde(rename = "@id")]
-    id: u16,
-    #[serde(rename = "@computationCost")]
-    computation_cost: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct TaskGraph {
-    #[serde(rename = "Task")]
-    tasks: Vec<Task>,
-    #[serde(rename = "Edge")]
-    edges: Vec<Edge>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub enum RouterStatus {
-    Broken,
-    Normal,
-}
-
-impl Default for RouterStatus {
-    fn default() -> Self {
-        RouterStatus::Broken
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Router {
-    #[serde(rename = "@age")]
-    age: u8,
-    #[serde(rename = "@temperature")]
-    temperature: u8,
-    #[serde(rename = "@status")]
-    status: RouterStatus,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub enum CoreStatus {
-    Broken,
-    Low,
-    Mid,
-    High,
-}
-
-impl Default for CoreStatus {
-    fn default() -> Self {
-        CoreStatus::Broken
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Core {
-    #[serde(rename = "@id")]
-    id: u8,
-    #[serde(rename = "@age")]
-    age: u16,
-    #[serde(rename = "@temperature")]
-    temperature: u8,
-    #[serde(rename = "@status")]
-    status: CoreStatus,
-    #[serde(rename = "Router")]
-    router: Router,
-    #[serde(rename = "@allocated_task", skip_serializing_if = "Option::is_none")]
-    allocated_task: Option<u16>,
-}
-
-impl Hash for Core {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // We can take a shortcut here as IDs are unique for our cores
-        self.id.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Cores {
-    #[serde(rename = "Core")]
-    pub list: Vec<Core>,
-}
-
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Getters, Setters)]
+#[getset(get = "pub", set = "pub")]
 pub struct Neighbours {
     top: Option<usize>,
     right: Option<usize>,
@@ -104,41 +21,7 @@ pub struct Neighbours {
     left: Option<usize>,
 }
 
-impl Neighbours {
-    pub fn top(&self) -> Option<usize> {
-        self.top
-    }
-
-    pub fn set_top(&mut self, top: Option<usize>) {
-        self.top = top;
-    }
-
-    pub fn right(&self) -> Option<usize> {
-        self.right
-    }
-
-    pub fn set_right(&mut self, right: Option<usize>) {
-        self.right = right;
-    }
-
-    pub fn bottom(&self) -> Option<usize> {
-        self.bottom
-    }
-
-    pub fn set_bottom(&mut self, bottom: Option<usize>) {
-        self.bottom = bottom;
-    }
-
-    pub fn left(&self) -> Option<usize> {
-        self.left
-    }
-
-    pub fn set_left(&mut self, left: Option<usize>) {
-        self.left = left;
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
 pub struct ManycoreSystem {
     #[serde(rename = "@xmlns")]
@@ -149,16 +32,22 @@ pub struct ManycoreSystem {
     // Either way, this works and I guess it's just a quick-xml quirk.
     #[serde(rename(serialize = "@xsi:schemaLocation", deserialize = "@schemaLocation"))]
     xsi_schema_location: String,
+    #[getset(get = "pub")]
     #[serde(rename = "@rows")]
-    pub rows: u8,
+    rows: u8,
     #[serde(rename = "@columns")]
-    pub columns: u8,
+    #[getset(get = "pub")]
+    columns: u8,
     #[serde(rename = "@routing_algo")]
+    #[getset(get = "pub")]
     routing_algo: String,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
     task_graph: TaskGraph,
-    pub cores: Cores,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    cores: Cores,
     #[serde(skip)]
-    pub connections: HashMap<usize, Neighbours>,
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    connections: HashMap<usize, Neighbours>,
 }
 
 impl ManycoreSystem {
@@ -170,11 +59,11 @@ impl ManycoreSystem {
         // Sort cores by id
         manycore
             .cores
-            .list
-            .sort_by(|me, other| me.id.cmp(&other.id));
+            .list_mut()
+            .sort_by(|me, other| me.id().cmp(&other.id()));
 
         let usize_columns = usize::from(manycore.columns);
-        let last = manycore.cores.list.len() - 1;
+        let last = manycore.cores.list().len() - 1;
         for i in 0..=last {
             let right = i + 1;
             let top = i >= usize_columns;
@@ -220,161 +109,94 @@ mod tests {
     #[test]
     fn can_parse() {
         let expected_tasks = vec![
-            Task {
-                id: 0,
-                computation_cost: 40,
-            },
-            Task {
-                id: 1,
-                computation_cost: 80,
-            },
-            Task {
-                id: 2,
-                computation_cost: 60,
-            },
-            Task {
-                id: 3,
-                computation_cost: 40,
-            },
+            Task::new(0, 40),
+            Task::new(1, 80),
+            Task::new(2, 60),
+            Task::new(3, 40),
         ];
 
         let expected_edges = vec![
-            Edge {
-                from: 0,
-                to: 1,
-                communication_cost: 3,
-            },
-            Edge {
-                from: 0,
-                to: 2,
-                communication_cost: 2,
-            },
-            Edge {
-                from: 1,
-                to: 3,
-                communication_cost: 3,
-            },
-            Edge {
-                from: 2,
-                to: 3,
-                communication_cost: 1,
-            },
+            Edge::new(0, 1, 3),
+            Edge::new(0, 2, 2),
+            Edge::new(1, 3, 3),
+            Edge::new(2, 3, 1),
         ];
 
-        let expected_graph = TaskGraph {
-            tasks: expected_tasks,
-            edges: expected_edges,
-        };
+        let expected_graph = TaskGraph::new(expected_tasks, expected_edges);
 
         let expected_cores = vec![
-            Core {
-                id: 0,
-                age: 238,
-                status: CoreStatus::High,
-                temperature: 45,
-                allocated_task: None,
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 1,
-                age: 394,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: Some(3),
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 2,
-                age: 157,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: None,
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 3,
-                age: 225,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: None,
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 4,
-                age: 478,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: Some(1),
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 5,
-                age: 105,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: None,
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 6,
-                age: 18,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: Some(0),
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 7,
-                age: 15,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: Some(2),
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
-            Core {
-                id: 8,
-                age: 10,
-                status: CoreStatus::High,
-                temperature: 30,
-                allocated_task: None,
-                router: Router {
-                    age: 30,
-                    status: RouterStatus::Normal,
-                    temperature: 30,
-                },
-            },
+            Core::new(
+                0,
+                238,
+                45,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                None,
+            ),
+            Core::new(
+                1,
+                394,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                Some(3),
+            ),
+            Core::new(
+                2,
+                157,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                None,
+            ),
+            Core::new(
+                3,
+                225,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                None,
+            ),
+            Core::new(
+                4,
+                478,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                Some(1),
+            ),
+            Core::new(
+                5,
+                105,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                None,
+            ),
+            Core::new(
+                6,
+                18,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                Some(0),
+            ),
+            Core::new(
+                7,
+                15,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                Some(2),
+            ),
+            Core::new(
+                8,
+                10,
+                30,
+                CoreStatus::High,
+                Router::new(30, 30, RouterStatus::Normal),
+                None,
+            ),
         ];
 
         let expected_connections: HashMap<usize, Neighbours> = HashMap::from([
@@ -470,9 +292,7 @@ mod tests {
             columns: 3,
             rows: 3,
             routing_algo: String::from("RowFirst"),
-            cores: Cores {
-                list: expected_cores,
-            },
+            cores: Cores::new(expected_cores),
             task_graph: expected_graph,
             connections: expected_connections
         };
