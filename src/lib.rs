@@ -102,8 +102,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        Core, CoreStatus, Cores, Edge, ManycoreSystem, Neighbours, Router, RouterStatus, Task,
-        TaskGraph,
+        Core, CoreStatus, Cores, Edge, FIFOs, ManycoreSystem, Neighbours, Router, RouterStatus, Task, TaskGraph
     };
 
     #[test]
@@ -127,75 +126,102 @@ mod tests {
         let expected_cores = vec![
             Core::new(
                 0,
-                238,
-                45,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 None,
+                Some(FIFOs {}),
+                Some(HashMap::from([
+                    ("@age".to_string(), "238".to_string()),
+                    ("@temperature".to_string(), "45".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 1,
-                394,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 Some(3),
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "394".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 2,
-                157,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 None,
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "157".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 3,
-                225,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 None,
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "225".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 4,
-                478,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 Some(1),
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "478".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 5,
-                105,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 None,
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "105".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 6,
-                18,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 Some(0),
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "18".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 7,
-                15,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 Some(2),
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "15".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
             Core::new(
                 8,
-                10,
-                30,
-                CoreStatus::High,
                 Router::new(30, 30, RouterStatus::Normal),
                 None,
+                None,
+                Some(HashMap::from([
+                    ("@age".to_string(), "10".to_string()),
+                    ("@temperature".to_string(), "30".to_string()),
+                    ("@status".to_string(), "High".to_string()),
+                ])),
             ),
         ];
 
