@@ -1,21 +1,7 @@
 use crate::{router::*, utils, WithXMLAttributes};
 use getset::{Getters, MutGetters, Setters};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash};
-
-// #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-// pub enum CoreStatus {
-//     Broken,
-//     Low,
-//     Mid,
-//     High,
-// }
-
-// impl Default for CoreStatus {
-//     fn default() -> Self {
-//         CoreStatus::Broken
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct FIFOs {}

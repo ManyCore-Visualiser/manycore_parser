@@ -1,21 +1,8 @@
 use std::collections::HashMap;
 
-use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
 use crate::{utils, WithXMLAttributes};
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub enum RouterStatus {
-    Broken,
-    Normal,
-}
-
-impl Default for RouterStatus {
-    fn default() -> Self {
-        RouterStatus::Broken
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Router {

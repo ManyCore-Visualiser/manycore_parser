@@ -27,6 +27,21 @@ pub struct Neighbours {
     left: Option<usize>,
 }
 
+// This will be serialised as JSON
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AttributeType {
+    Text,
+    Number,
+}
+
+// This will be serialised as JSON
+#[derive(Serialize, Debug, PartialEq, Default)]
+pub struct ConfigurableAttributes {
+    core: HashMap<String, AttributeType>,
+    router: HashMap<String, AttributeType>,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
 pub struct ManycoreSystem {
@@ -54,9 +69,28 @@ pub struct ManycoreSystem {
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     connections: HashMap<usize, Neighbours>,
+    #[serde(skip)]
+    configurable_attributes: ConfigurableAttributes,
 }
 
 impl ManycoreSystem {
+    fn populate_attribute_map<T: WithXMLAttributes>(
+        item: &T,
+        map: &mut HashMap<String, AttributeType>,
+    ) {
+        if let Some(other_attributes) = item.other_attributes() {
+            for (key, value) in other_attributes {
+                if !map.contains_key(key) {
+                    let attribute_type = match value.parse::<u64>() {
+                        Ok(_) => AttributeType::Number,
+                        Err(_) => AttributeType::Text,
+                    };
+
+                    map.insert(key.clone(), attribute_type);
+                }
+            }
+        }
+    }
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, Box<dyn std::error::Error>> {
         let file_content = std::fs::read_to_string(path)?;
 
@@ -68,6 +102,7 @@ impl ManycoreSystem {
             .list_mut()
             .sort_by(|me, other| me.id().cmp(&other.id()));
 
+        // Populate neighbour connections
         let usize_columns = usize::from(manycore.columns);
         let last = manycore.cores.list().len() - 1;
         for i in 0..=last {
@@ -99,6 +134,21 @@ impl ManycoreSystem {
             manycore.connections.insert(i, neighbours);
         }
 
+        // Workout attributes
+        let mut core_attributes: HashMap<String, AttributeType> = HashMap::new();
+        core_attributes.insert("@id".to_string(), AttributeType::Text);
+        core_attributes.insert("@coordinates".to_string(), AttributeType::Text);
+        let mut router_attributes: HashMap<String, AttributeType> = HashMap::new();
+        for core in manycore.cores.list().iter() {
+            Self::populate_attribute_map(core, &mut core_attributes);
+            Self::populate_attribute_map(core.router(), &mut router_attributes);
+        }
+
+        manycore.configurable_attributes = ConfigurableAttributes {
+            core: core_attributes,
+            router: router_attributes,
+        };
+
         Ok(manycore)
     }
 }
@@ -108,7 +158,8 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        Core, Cores, Edge, FIFOs, ManycoreSystem, Neighbours, Router, RouterStatus, Task, TaskGraph,
+        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFOs, ManycoreSystem,
+        Neighbours, Router, Task, TaskGraph,
     };
 
     #[test]
@@ -351,6 +402,21 @@ mod tests {
             ),
         ]);
 
+        let expected_configurable_attributes = ConfigurableAttributes {
+            core: HashMap::from([
+                ("@id".to_string(), AttributeType::Text),
+                ("@coordinates".to_string(), AttributeType::Text),
+                ("@age".to_string(), AttributeType::Number),
+                ("@temperature".to_string(), AttributeType::Number),
+                ("@status".to_string(), AttributeType::Text),
+            ]),
+            router: HashMap::from([
+                ("@age".to_string(), AttributeType::Number),
+                ("@temperature".to_string(), AttributeType::Number),
+                ("@status".to_string(), AttributeType::Text),
+            ]),
+        };
+
         let expected_manycore = ManycoreSystem {
             xmlns: String::from(
                 "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
@@ -362,7 +428,8 @@ mod tests {
             routing_algo: String::from("RowFirst"),
             cores: Cores::new(expected_cores),
             task_graph: expected_graph,
-            connections: expected_connections
+            connections: expected_connections,
+            configurable_attributes: expected_configurable_attributes
         };
 
         let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
