@@ -10,6 +10,7 @@ use std::collections::HashMap;
 pub use crate::cores::*;
 pub use crate::graph::*;
 pub use crate::router::*;
+use getset::CopyGetters;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +29,7 @@ pub struct Neighbours {
 }
 
 // This will be serialised as JSON
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeType {
     Text,
@@ -36,7 +37,7 @@ pub enum AttributeType {
 }
 
 // This will be serialised as JSON
-#[derive(Serialize, Debug, PartialEq, Default)]
+#[derive(Serialize, Debug, PartialEq, Default, Clone)]
 pub struct ConfigurableAttributes {
     core: HashMap<String, AttributeType>,
     router: HashMap<String, AttributeType>,
@@ -70,6 +71,7 @@ pub struct ManycoreSystem {
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     connections: HashMap<usize, Neighbours>,
     #[serde(skip)]
+    #[getset(get = "pub")]
     configurable_attributes: ConfigurableAttributes,
 }
 
