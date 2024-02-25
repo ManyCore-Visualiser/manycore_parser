@@ -62,7 +62,7 @@ impl WithXMLAttributes for Core {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters, Clone)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
 pub struct Cores {
     #[serde(rename = "Core")]

@@ -3,6 +3,7 @@
 mod cores;
 mod graph;
 mod router;
+mod routing;
 mod utils;
 
 use std::collections::HashMap;
@@ -10,22 +11,13 @@ use std::collections::HashMap;
 pub use crate::cores::*;
 pub use crate::graph::*;
 pub use crate::router::*;
-use getset::CopyGetters;
+pub use crate::routing::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
 pub trait WithXMLAttributes {
     fn id(&self) -> Option<&u8>;
     fn other_attributes(&self) -> &Option<HashMap<String, String>>;
-}
-
-#[derive(Default, Debug, PartialEq, Getters, Setters)]
-#[getset(get = "pub", set = "pub")]
-pub struct Neighbours {
-    top: Option<usize>,
-    right: Option<usize>,
-    bottom: Option<usize>,
-    left: Option<usize>,
 }
 
 // This will be serialised as JSON
@@ -115,22 +107,22 @@ impl ManycoreSystem {
 
             // Right
             if right % usize_columns != 0 {
-                neighbours.set_right(Some(right));
+                neighbours.set_right(Neighbour::new(Some(right)));
             }
 
             // Left
             if i % usize_columns != 0 {
-                neighbours.set_left(Some(i - 1));
+                neighbours.set_left(Neighbour::new(Some(i - 1)));
             }
 
             // Top
             if top {
-                neighbours.set_top(Some(i - usize_columns));
+                neighbours.set_top(Neighbour::new(Some(i - usize_columns)));
             }
 
             // Bottom
             if bottom <= last {
-                neighbours.set_bottom(Some(bottom));
+                neighbours.set_bottom(Neighbour::new(Some(bottom)));
             }
 
             manycore.connections.insert(i, neighbours);
@@ -321,87 +313,15 @@ mod tests {
         ];
 
         let expected_connections: HashMap<usize, Neighbours> = HashMap::from([
-            (
-                0,
-                Neighbours {
-                    top: None,
-                    right: Some(1),
-                    bottom: Some(3),
-                    left: None,
-                },
-            ),
-            (
-                1,
-                Neighbours {
-                    top: None,
-                    right: Some(2),
-                    bottom: Some(4),
-                    left: Some(0),
-                },
-            ),
-            (
-                2,
-                Neighbours {
-                    top: None,
-                    right: None,
-                    bottom: Some(5),
-                    left: Some(1),
-                },
-            ),
-            (
-                3,
-                Neighbours {
-                    top: Some(0),
-                    right: Some(4),
-                    bottom: Some(6),
-                    left: None,
-                },
-            ),
-            (
-                4,
-                Neighbours {
-                    top: Some(1),
-                    right: Some(5),
-                    bottom: Some(7),
-                    left: Some(3),
-                },
-            ),
-            (
-                5,
-                Neighbours {
-                    top: Some(2),
-                    right: None,
-                    bottom: Some(8),
-                    left: Some(4),
-                },
-            ),
-            (
-                6,
-                Neighbours {
-                    top: Some(3),
-                    right: Some(7),
-                    bottom: None,
-                    left: None,
-                },
-            ),
-            (
-                7,
-                Neighbours {
-                    top: Some(4),
-                    right: Some(8),
-                    bottom: None,
-                    left: Some(6),
-                },
-            ),
-            (
-                8,
-                Neighbours {
-                    top: Some(5),
-                    right: None,
-                    bottom: None,
-                    left: Some(7),
-                },
-            ),
+            (0, Neighbours::new(None, Some(1), Some(3), None)),
+            (1, Neighbours::new(None, Some(2), Some(4), Some(0))),
+            (2, Neighbours::new(None, None, Some(5), Some(1))),
+            (3, Neighbours::new(Some(0), Some(4), Some(6), None)),
+            (4, Neighbours::new(Some(1), Some(5), Some(7), Some(3))),
+            (5, Neighbours::new(Some(2), None, Some(8), Some(4))),
+            (6, Neighbours::new(Some(3), Some(7), None, None)),
+            (7, Neighbours::new(Some(4), Some(8), None, Some(6))),
+            (8, Neighbours::new(Some(5), None, None, Some(7))),
         ]);
 
         let expected_configurable_attributes = ConfigurableAttributes {
