@@ -103,12 +103,20 @@ impl Display for ConnectionUpdateError {
 impl Error for ConnectionUpdateError {}
 
 impl ManycoreSystem {
-    fn calculate_edges_routing_information(&self) -> Vec<EdgeRoutingInformation> {
+    fn task_id_to_core_id(&self, task_id: &u16) -> Result<&usize, ConnectionUpdateError> {
+        self.task_core_map()
+            .get(task_id)
+            .ok_or(ConnectionUpdateError)
+    }
+
+    fn calculate_edges_routing_information(
+        &self,
+    ) -> Result<Vec<EdgeRoutingInformation>, ConnectionUpdateError> {
         let mut ret = vec![];
 
         for edge in self.task_graph().edges() {
-            let start = &self.cores().list()[usize::from(*edge.from())];
-            let destination = &self.cores().list()[usize::from(*edge.to())];
+            let start = &self.cores().list()[*self.task_id_to_core_id(edge.from())?];
+            let destination = &self.cores().list()[*self.task_id_to_core_id(edge.to())?];
 
             // We can unwrap the ID here because we are working with a core.
             // Core always returns Some() in its WithXMLAttributes impl.
@@ -133,7 +141,7 @@ impl ManycoreSystem {
             });
         }
 
-        ret
+        Ok(ret)
     }
 
     fn update_connection(
@@ -159,7 +167,7 @@ impl ManycoreSystem {
     }
 
     fn row_first(&mut self) -> Result<(), ConnectionUpdateError> {
-        let mut edges_routing_information = self.calculate_edges_routing_information();
+        let mut edges_routing_information = self.calculate_edges_routing_information()?;
 
         // For each task grapoh edge
         for eri in edges_routing_information.iter_mut() {
@@ -224,7 +232,7 @@ impl ManycoreSystem {
     }
 
     fn column_first(&mut self) -> Result<(), ConnectionUpdateError> {
-        let mut edges_routing_information = self.calculate_edges_routing_information();
+        let mut edges_routing_information = self.calculate_edges_routing_information()?;
 
         // For each task grapoh edge
         for eri in edges_routing_information.iter_mut() {
@@ -338,28 +346,24 @@ mod tests {
 
         // Do the routing by hand to verify these, no other way really
         assert_eq!(
-            5,
-            get_neighbour_by_id(&manycore, &0, &Neighbours::right).link_cost
-        );
-        assert_eq!(
-            2,
-            get_neighbour_by_id(&manycore, &1, &Neighbours::right).link_cost
+            3,
+            *get_neighbour_by_id(&manycore, &6, &Neighbours::top).link_cost()
         );
         assert_eq!(
             3,
-            get_neighbour_by_id(&manycore, &1, &Neighbours::bottom).link_cost
+            *get_neighbour_by_id(&manycore, &3, &Neighbours::right).link_cost()
+        );
+        assert_eq!(
+            2,
+            *get_neighbour_by_id(&manycore, &6, &Neighbours::right).link_cost()
         );
         assert_eq!(
             4,
-            get_neighbour_by_id(&manycore, &4, &Neighbours::left).link_cost
+            *get_neighbour_by_id(&manycore, &4, &Neighbours::top).link_cost()
         );
         assert_eq!(
             1,
-            get_neighbour_by_id(&manycore, &2, &Neighbours::bottom).link_cost
-        );
-        assert_eq!(
-            1,
-            get_neighbour_by_id(&manycore, &5, &Neighbours::left).link_cost
+            *get_neighbour_by_id(&manycore, &7, &Neighbours::top).link_cost()
         );
     }
 
@@ -375,23 +379,15 @@ mod tests {
         // Do the routing by hand to verify these, no other way really
         assert_eq!(
             5,
-            get_neighbour_by_id(&manycore, &0, &Neighbours::right).link_cost
-        );
-        assert_eq!(
-            2,
-            get_neighbour_by_id(&manycore, &1, &Neighbours::right).link_cost
+            *get_neighbour_by_id(&manycore, &6, &Neighbours::right).link_cost()
         );
         assert_eq!(
             4,
-            get_neighbour_by_id(&manycore, &1, &Neighbours::left).link_cost
+            *get_neighbour_by_id(&manycore, &7, &Neighbours::top).link_cost()
         );
         assert_eq!(
             4,
-            get_neighbour_by_id(&manycore, &0, &Neighbours::bottom).link_cost
-        );
-        assert_eq!(
-            1,
-            get_neighbour_by_id(&manycore, &2, &Neighbours::left).link_cost
+            *get_neighbour_by_id(&manycore, &4, &Neighbours::top).link_cost()
         );
     }
 }

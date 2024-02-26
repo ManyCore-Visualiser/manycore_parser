@@ -37,6 +37,7 @@ pub struct ConfigurableAttributes {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
+/// This struct represents the many core system that was provided as input via XML
 pub struct ManycoreSystem {
     #[serde(rename = "@xmlns")]
     xmlns: String,
@@ -48,22 +49,33 @@ pub struct ManycoreSystem {
     xsi_schema_location: String,
     #[getset(get = "pub")]
     #[serde(rename = "@rows")]
+    /// Rows in the cores matrix
     rows: u8,
     #[serde(rename = "@columns")]
     #[getset(get = "pub")]
+    /// Columns in the cores matrix
     columns: u8,
     #[serde(rename = "@routing_algo")]
     #[getset(get = "pub")]
+    /// Algorithm used in the observed routing (FIFOs data)
     routing_algo: String,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    /// The provided task graph
     task_graph: TaskGraph,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    /// The system's cores
     cores: Cores,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    /// This is not part of the XML and is used in the routing logic. It is a map with the core IDs as key and the core (router) connections as value.
     connections: HashMap<usize, Neighbours>,
     #[serde(skip)]
+    #[getset(get = "pub", set = "pub", get_mut = "pub")]
+    /// This is not part of the XML and is used in the routing logic. It maps a task ID (key) to the corresponding coree ID (value, the core upon which the task is allocated to).
+    task_core_map: HashMap<u16, usize>,
+    #[serde(skip)]
     #[getset(get = "pub")]
+    /// This is not part of the XML and is used to provided the frontend with a list of attributes that can be requested for rendering.
     configurable_attributes: ConfigurableAttributes,
 }
 
@@ -96,9 +108,10 @@ impl ManycoreSystem {
             .list_mut()
             .sort_by(|me, other| me.id().cmp(&other.id()));
 
-        // Populate neighbour connections
+        // Populate neighbour connections and task -> core map
         let usize_columns = usize::from(manycore.columns);
         let last = manycore.cores.list().len() - 1;
+        let mut task_core_map = HashMap::new();
         for i in 0..=last {
             let right = i + 1;
             let top = i >= usize_columns;
@@ -125,8 +138,15 @@ impl ManycoreSystem {
                 neighbours.set_bottom(Neighbour::new(Some(bottom)));
             }
 
-            manycore.connections.insert(i, neighbours);
+            manycore.connections_mut().insert(i, neighbours);
+
+            if let Some(task_id) = manycore.cores().list()[i].allocated_task().as_ref() {
+                task_core_map.insert(*task_id, i);
+            }
         }
+
+        // Store map
+        manycore.task_core_map = task_core_map;
 
         // Workout attributes
         let mut core_attributes: HashMap<String, AttributeType> = HashMap::new();
@@ -339,6 +359,13 @@ mod tests {
             ]),
         };
 
+        let expected_task_core_map = HashMap::from([
+            (0u16, 6usize),
+            (1u16, 4usize),
+            (2u16, 7usize),
+            (3u16, 1usize),
+        ]);
+
         let expected_manycore = ManycoreSystem {
             xmlns: String::from(
                 "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
@@ -351,6 +378,7 @@ mod tests {
             cores: Cores::new(expected_cores),
             task_graph: expected_graph,
             connections: expected_connections,
+            task_core_map: expected_task_core_map,
             configurable_attributes: expected_configurable_attributes
         };
 
