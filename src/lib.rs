@@ -33,6 +33,7 @@ pub enum AttributeType {
 pub struct ConfigurableAttributes {
     core: HashMap<String, AttributeType>,
     router: HashMap<String, AttributeType>,
+    algorithms: Vec<RoutingAlgorithms>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
@@ -161,6 +162,7 @@ impl ManycoreSystem {
         manycore.configurable_attributes = ConfigurableAttributes {
             core: core_attributes,
             router: router_attributes,
+            algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
         };
 
         Ok(manycore)
@@ -173,7 +175,7 @@ mod tests {
 
     use crate::{
         AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFOs, ManycoreSystem,
-        Neighbours, Router, Task, TaskGraph,
+        Neighbours, Router, Task, TaskGraph, SUPPORTED_ALGORITHMS,
     };
 
     #[test]
@@ -357,6 +359,7 @@ mod tests {
                 ("@temperature".to_string(), AttributeType::Number),
                 ("@status".to_string(), AttributeType::Text),
             ]),
+            algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
         };
 
         let expected_task_core_map = HashMap::from([

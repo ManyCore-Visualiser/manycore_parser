@@ -71,11 +71,14 @@ impl Neighbours {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum RoutingAlgorithms {
     RowFirst,
     ColumnFirst,
 }
+
+pub static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 2] =
+    [RoutingAlgorithms::RowFirst, RoutingAlgorithms::ColumnFirst];
 
 struct EdgeRoutingInformation {
     start_id: u8,
