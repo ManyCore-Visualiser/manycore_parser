@@ -37,6 +37,7 @@ pub struct ConfigurableAttributes {
     core: HashMap<String, AttributeType>,
     router: HashMap<String, AttributeType>,
     algorithms: Vec<RoutingAlgorithms>,
+    observed_algorithm: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
@@ -166,6 +167,7 @@ impl ManycoreSystem {
             core: core_attributes,
             router: router_attributes,
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
+            observed_algorithm: manycore.routing_algo.clone(),
         };
 
         Ok(manycore)
@@ -477,6 +479,7 @@ mod tests {
                 ("@status".to_string(), AttributeType::Text),
             ]),
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
+            observed_algorithm: Some(String::from("RowFirst")),
         };
 
         let expected_task_core_map = HashMap::from([

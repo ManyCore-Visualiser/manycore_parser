@@ -22,13 +22,14 @@ pub enum FIFOStatus {
     Normal,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
 pub struct FIFO {
     #[serde(rename = "@direction")]
     direction: FIFODirection,
     #[serde(rename = "@age")]
     age: u8,
     #[serde(rename = "@packets_transmitted")]
+    #[getset(get = "pub")]
     packets_transmitted: u16,
     #[serde(skip_serializing_if = "Option::is_none", rename = "@packet_index")]
     packet_index: Option<u8>,
