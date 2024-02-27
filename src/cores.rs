@@ -1,10 +1,7 @@
-use crate::{router::*, utils, WithXMLAttributes};
+use crate::{fifos::FIFOs, router::*, utils, WithXMLAttributes};
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash};
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct FIFOs {}
+use std::{collections::BTreeMap, hash::Hash};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters, Setters, MutGetters)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
@@ -16,7 +13,7 @@ pub struct Core {
     router: Router,
     #[serde(rename = "@allocated_task", skip_serializing_if = "Option::is_none")]
     allocated_task: Option<u16>,
-    #[serde(rename = "FIFOs")]
+    #[serde(rename = "FIFOs", skip_serializing_if = "Core::skip_serializing_fifos")]
     fifos: Option<FIFOs>,
     #[serde(
         flatten,
@@ -24,7 +21,7 @@ pub struct Core {
         deserialize_with = "utils::deserialize_attrs"
     )]
     #[getset(skip)]
-    other_attributes: Option<HashMap<String, String>>,
+    other_attributes: Option<BTreeMap<String, String>>,
 }
 
 impl Core {
@@ -33,7 +30,7 @@ impl Core {
         router: Router,
         allocated_task: Option<u16>,
         fifos: Option<FIFOs>,
-        other_attributes: Option<HashMap<String, String>>,
+        other_attributes: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
             id,
@@ -42,6 +39,10 @@ impl Core {
             fifos,
             other_attributes,
         }
+    }
+
+    fn skip_serializing_fifos(fifos: &Option<FIFOs>) -> bool {
+        !fifos.as_ref().is_some_and(|f| !f.fifo().is_empty())
     }
 }
 
@@ -57,7 +58,7 @@ impl WithXMLAttributes for Core {
         Some(&self.id)
     }
 
-    fn other_attributes(&self) -> &Option<HashMap<String, String>> {
+    fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
 }

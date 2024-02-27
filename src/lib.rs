@@ -1,14 +1,17 @@
 //! A parser for Manycore System XML configuration files
 
 mod cores;
+mod fifos;
 mod graph;
 mod router;
 mod routing;
 mod utils;
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 pub use crate::cores::*;
+pub use crate::fifos::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
@@ -17,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 pub trait WithXMLAttributes {
     fn id(&self) -> Option<&u8>;
-    fn other_attributes(&self) -> &Option<HashMap<String, String>>;
+    fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
 }
 
 // This will be serialised as JSON
@@ -56,10 +59,10 @@ pub struct ManycoreSystem {
     #[getset(get = "pub")]
     /// Columns in the cores matrix
     columns: u8,
-    #[serde(rename = "@routing_algo")]
+    #[serde(rename = "@routing_algo", skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub")]
     /// Algorithm used in the observed routing (FIFOs data)
-    routing_algo: String,
+    routing_algo: Option<String>,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// The provided task graph
     task_graph: TaskGraph,
@@ -171,11 +174,14 @@ impl ManycoreSystem {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{
+        collections::{BTreeMap, HashMap},
+        fs::read_to_string,
+    };
 
     use crate::{
-        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFOs, ManycoreSystem,
-        Neighbours, Router, Task, TaskGraph, SUPPORTED_ALGORITHMS,
+        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection, FIFOStatus, FIFOs,
+        ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO, SUPPORTED_ALGORITHMS,
     };
 
     #[test]
@@ -199,14 +205,125 @@ mod tests {
         let expected_cores = vec![
             Core::new(
                 0,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 None,
-                Some(FIFOs {}),
-                Some(HashMap::from([
+                Some(FIFOs::new(BTreeMap::from([
+                    (
+                        FIFODirection::NorthInput,
+                        FIFO::new(
+                            FIFODirection::NorthInput,
+                            30,
+                            1,
+                            Some(0),
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::NorthOutput,
+                        FIFO::new(
+                            FIFODirection::NorthOutput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::SouthInput,
+                        FIFO::new(
+                            FIFODirection::SouthInput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::SouthOutput,
+                        FIFO::new(
+                            FIFODirection::SouthOutput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::EastInput,
+                        FIFO::new(
+                            FIFODirection::EastInput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::EastOutput,
+                        FIFO::new(
+                            FIFODirection::EastOutput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::WestInput,
+                        FIFO::new(
+                            FIFODirection::WestInput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::WestOutput,
+                        FIFO::new(
+                            FIFODirection::WestOutput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::LocalInput,
+                        FIFO::new(
+                            FIFODirection::LocalInput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                    (
+                        FIFODirection::LocalOutput,
+                        FIFO::new(
+                            FIFODirection::LocalOutput,
+                            30,
+                            0,
+                            None,
+                            FIFOStatus::Normal,
+                            400,
+                        ),
+                    ),
+                ]))),
+                Some(BTreeMap::from([
                     ("@age".to_string(), "238".to_string()),
                     ("@temperature".to_string(), "45".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -214,14 +331,14 @@ mod tests {
             ),
             Core::new(
                 1,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 Some(3),
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "394".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -229,14 +346,14 @@ mod tests {
             ),
             Core::new(
                 2,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 None,
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "157".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -244,14 +361,14 @@ mod tests {
             ),
             Core::new(
                 3,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 None,
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "225".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -259,14 +376,14 @@ mod tests {
             ),
             Core::new(
                 4,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 Some(1),
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "478".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -274,14 +391,14 @@ mod tests {
             ),
             Core::new(
                 5,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 None,
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "105".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -289,14 +406,14 @@ mod tests {
             ),
             Core::new(
                 6,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 Some(0),
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "18".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -304,14 +421,14 @@ mod tests {
             ),
             Core::new(
                 7,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 Some(2),
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "15".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -319,14 +436,14 @@ mod tests {
             ),
             Core::new(
                 8,
-                Router::new(Some(HashMap::from([
+                Router::new(Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
                 ]))),
                 None,
                 None,
-                Some(HashMap::from([
+                Some(BTreeMap::from([
                     ("@age".to_string(), "10".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "High".to_string()),
@@ -374,10 +491,10 @@ mod tests {
                 "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
             ),
             xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
-            xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/a8e362dd5250ccdcb517a82774303dee2b0ab8d9/manycore_schema.xsd"),
+            xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/f8ee7d50c5a5c506b77aecb48d97d6ac409afc4b/manycore_schema.xsd"),
             columns: 3,
             rows: 3,
-            routing_algo: String::from("RowFirst"),
+            routing_algo: Some(String::from("RowFirst")),
             cores: Cores::new(expected_cores),
             task_graph: expected_graph,
             connections: expected_connections,
@@ -389,5 +506,18 @@ mod tests {
             .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
 
         assert_eq!(manycore, expected_manycore)
+    }
+
+    #[test]
+    fn can_serialize() {
+        let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
+            .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
+
+        let res = quick_xml::se::to_string(&manycore).expect("Could not serialize ManyCore");
+
+        let expected = read_to_string("tests/serialized.xml")
+            .expect("Could not read input test file \"tests/serialized.xml\"");
+
+        assert_eq!(res, expected)
     }
 }

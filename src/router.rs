@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -11,11 +11,11 @@ pub struct Router {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "utils::deserialize_attrs"
     )]
-    other_attributes: Option<HashMap<String, String>>,
+    other_attributes: Option<BTreeMap<String, String>>,
 }
 
 impl Router {
-    pub fn new(other_attributes: Option<HashMap<String, String>>) -> Self {
+    pub fn new(other_attributes: Option<BTreeMap<String, String>>) -> Self {
         Self { other_attributes }
     }
 }
@@ -25,7 +25,7 @@ impl WithXMLAttributes for Router {
         None
     }
 
-    fn other_attributes(&self) -> &Option<HashMap<String, String>> {
+    fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
 }

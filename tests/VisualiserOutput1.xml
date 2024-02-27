@@ -3,7 +3,7 @@
 <ManycoreSystem
     xmlns="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/a8e362dd5250ccdcb517a82774303dee2b0ab8d9/manycore_schema.xsd"
+    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/f8ee7d50c5a5c506b77aecb48d97d6ac409afc4b/manycore_schema.xsd"
     rows="3"
     columns="3"
     routing_algo="RowFirst"
@@ -24,14 +24,16 @@
             <Router age="30" status="Normal" temperature="30" />
             <FIFOs>
                 <FIFO direction="NorthInput" age="30" packets_transmitted="1" status="Normal"
-                    packet_index="0" />
-                <FIFO direction="NorthOutput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="SouthInput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="SouthOutput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="EastInput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="EastOutput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="WestInput" age="30" packets_transmitted="0" status="Normal" />
-                <FIFO direction="WestOutput" age="30" packets_transmitted="0" status="Normal" />
+                    packet_index="0" bandwidth="400"/>
+                <FIFO direction="NorthOutput" age="30" packets_transmitted="0" status="Normal" bandwidth="400" />
+                <FIFO direction="SouthInput" age="30" packets_transmitted="0" status="Normal" bandwidth="400" />
+                <FIFO direction="SouthOutput" age="30" packets_transmitted="0" status="Normal" bandwidth="400" />
+                <FIFO direction="EastInput" age="30" packets_transmitted="0" status="Normal" bandwidth="400" />
+                <FIFO direction="EastOutput" age="30" packets_transmitted="0" status="Normal" bandwidth="400" />
+                <FIFO direction="WestInput" age="30" packets_transmitted="0" status="Normal" bandwidth="400"/>
+                <FIFO direction="WestOutput" age="30" packets_transmitted="0" status="Normal" bandwidth="400"/>
+                <FIFO direction="LocalInput" age="30" packets_transmitted="0" status="Normal" bandwidth="400"/>
+                <FIFO direction="LocalOutput" age="30" packets_transmitted="0" status="Normal" bandwidth="400"/>
             </FIFOs>
         </Core>
 

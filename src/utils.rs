@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Deserializer};
 
 pub fn deserialize_attrs<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<Option<HashMap<String, String>>, D::Error> {
-    let map_option: Option<HashMap<String, String>> = Deserialize::deserialize(deserializer)?;
+) -> Result<Option<BTreeMap<String, String>>, D::Error> {
+    let map_option: Option<BTreeMap<String, String>> = Deserialize::deserialize(deserializer)?;
 
     match map_option {
         Some(mut map) => {
