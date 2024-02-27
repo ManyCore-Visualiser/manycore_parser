@@ -33,6 +33,7 @@ pub enum AttributeType {
 
 // This will be serialised as JSON
 #[derive(Serialize, Debug, PartialEq, Default, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
     core: HashMap<String, AttributeType>,
     router: HashMap<String, AttributeType>,
