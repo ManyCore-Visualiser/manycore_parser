@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 pub trait WithXMLAttributes {
     fn id(&self) -> &u8;
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
+    fn variant(&self) -> &'static str;
 }
 
 // This will be serialised as JSON

@@ -35,4 +35,8 @@ impl WithXMLAttributes for Router {
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
+
+    fn variant(&self) -> &'static str {
+        &"r"
+    }
 }

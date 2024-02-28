@@ -61,6 +61,10 @@ impl WithXMLAttributes for Core {
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
+
+    fn variant(&self) -> &'static str {
+        &"c"
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters, Clone)]
