@@ -130,8 +130,8 @@ impl ManycoreSystem {
 
         // We can unwrap the ID here because we are working with a core.
         // Core always returns Some() in its WithXMLAttributes impl.
-        let start_id = start.id().unwrap().clone();
-        let destination_id = destination.id().unwrap().clone();
+        let start_id = *start.id();
+        let destination_id = *destination.id();
 
         let current_column = start_id % columns;
         let start_column = current_column.clone();

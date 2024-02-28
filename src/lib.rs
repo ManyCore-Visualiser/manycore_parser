@@ -19,7 +19,7 @@ use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
 pub trait WithXMLAttributes {
-    fn id(&self) -> Option<&u8>;
+    fn id(&self) -> &u8;
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
 }
 
@@ -110,15 +110,17 @@ impl ManycoreSystem {
 
         // Sort cores by id
         manycore
-            .cores
+            .cores_mut()
             .list_mut()
             .sort_by(|me, other| me.id().cmp(&other.id()));
+        
 
-        // Populate neighbour connections and task -> core map
+        // Populate neighbour connections, task -> core map and router IDs
         let usize_columns = usize::from(manycore.columns);
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
         for i in 0..=last {
+            // Neighbours
             let right = i + 1;
             let top = i >= usize_columns;
             let bottom = i + usize_columns;
@@ -146,9 +148,13 @@ impl ManycoreSystem {
 
             manycore.connections_mut().insert(i, neighbours);
 
+            // task -> core map
             if let Some(task_id) = manycore.cores().list()[i].allocated_task().as_ref() {
                 task_core_map.insert(*task_id, i);
             }
+
+            // router ID
+            manycore.cores_mut().list_mut().get_mut(i).unwrap().router_mut().set_id(i as u8);
         }
 
         // Store map
@@ -208,7 +214,7 @@ mod tests {
         let expected_cores = vec![
             Core::new(
                 0,
-                Router::new(Some(BTreeMap::from([
+                Router::new(0, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -334,7 +340,7 @@ mod tests {
             ),
             Core::new(
                 1,
-                Router::new(Some(BTreeMap::from([
+                Router::new(1, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -349,7 +355,7 @@ mod tests {
             ),
             Core::new(
                 2,
-                Router::new(Some(BTreeMap::from([
+                Router::new(2, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -364,7 +370,7 @@ mod tests {
             ),
             Core::new(
                 3,
-                Router::new(Some(BTreeMap::from([
+                Router::new(3, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -379,7 +385,7 @@ mod tests {
             ),
             Core::new(
                 4,
-                Router::new(Some(BTreeMap::from([
+                Router::new(4, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -394,7 +400,7 @@ mod tests {
             ),
             Core::new(
                 5,
-                Router::new(Some(BTreeMap::from([
+                Router::new(5, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -409,7 +415,7 @@ mod tests {
             ),
             Core::new(
                 6,
-                Router::new(Some(BTreeMap::from([
+                Router::new(6, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -424,7 +430,7 @@ mod tests {
             ),
             Core::new(
                 7,
-                Router::new(Some(BTreeMap::from([
+                Router::new(7, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),
@@ -439,7 +445,7 @@ mod tests {
             ),
             Core::new(
                 8,
-                Router::new(Some(BTreeMap::from([
+                Router::new(8, Some(BTreeMap::from([
                     ("@age".to_string(), "30".to_string()),
                     ("@temperature".to_string(), "30".to_string()),
                     ("@status".to_string(), "Normal".to_string()),

@@ -54,8 +54,8 @@ impl Hash for Core {
 }
 
 impl WithXMLAttributes for Core {
-    fn id(&self) -> Option<&u8> {
-        Some(&self.id)
+    fn id(&self) -> &u8 {
+        &self.id
     }
 
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
