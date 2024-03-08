@@ -78,7 +78,7 @@ pub struct ManycoreSystem {
     connections: HashMap<usize, Neighbours>,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// This is not part of the XML and is used in the routing logic. It maps a task ID (key) to the corresponding coree ID (value, the core upon which the task is allocated to).
+    /// This is not part of the XML and is used in the routing logic. It maps a task ID (key) to the corresponding core ID (value, the core upon which the task is allocated to).
     task_core_map: HashMap<u16, usize>,
     #[serde(skip)]
     #[getset(get = "pub")]

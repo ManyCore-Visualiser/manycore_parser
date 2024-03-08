@@ -128,8 +128,6 @@ impl ManycoreSystem {
         let destination =
             &cores.list()[*ManycoreSystem::task_id_to_core_id(task_core_map, edge.to())?];
 
-        // We can unwrap the ID here because we are working with a core.
-        // Core always returns Some() in its WithXMLAttributes impl.
         let start_id = *start.id();
         let destination_id = *destination.id();
 
@@ -182,7 +180,7 @@ impl ManycoreSystem {
         Ok(neighbour.id)
     }
 
-    fn row_first(&mut self) -> Result<(), ConnectionUpdateError> {
+    fn row_first(&mut self) -> Result<Vec<(usize, FIFODirection)>, ConnectionUpdateError> {
         let ManycoreSystem {
             ref cores,
             ref columns,
@@ -192,6 +190,10 @@ impl ManycoreSystem {
             ref task_core_map,
             ..
         } = *self;
+
+        // Return value. Stores non-zero core-edge pairs
+        let mut ret: Vec<(usize, FIFODirection)> = Vec::new();
+
         // For each edge in the task graph
         for edge in task_graph.edges() {
             let mut eri = ManycoreSystem::calculate_edge_routing_information(
@@ -213,6 +215,8 @@ impl ManycoreSystem {
                     // Row first
                     if eri.start_id > eri.destination_id {
                         // Going up
+                        ret.push((current_idx, FIFODirection::NorthOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -222,6 +226,8 @@ impl ManycoreSystem {
                         )?;
                     } else {
                         // Going down
+                        ret.push((current_idx, FIFODirection::SouthOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -234,6 +240,8 @@ impl ManycoreSystem {
                     // Then column
                     if eri.start_column > eri.destination_column {
                         // Going left
+                        ret.push((current_idx, FIFODirection::WestOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -243,6 +251,8 @@ impl ManycoreSystem {
                         )?;
                     } else {
                         // Going right
+                        ret.push((current_idx, FIFODirection::EastOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -258,10 +268,10 @@ impl ManycoreSystem {
             }
         }
 
-        Ok(())
+        Ok(ret)
     }
 
-    fn column_first(&mut self) -> Result<(), ConnectionUpdateError> {
+    fn column_first(&mut self) -> Result<Vec<(usize, FIFODirection)>, ConnectionUpdateError> {
         let ManycoreSystem {
             ref cores,
             ref columns,
@@ -271,6 +281,10 @@ impl ManycoreSystem {
             ref task_core_map,
             ..
         } = *self;
+
+        // Return value. Stores non-zero core-edge pairs
+        let mut ret: Vec<(usize, FIFODirection)> = Vec::new();
+
         // For each edge in the task graph
         for edge in task_graph.edges() {
             let mut eri = ManycoreSystem::calculate_edge_routing_information(
@@ -290,9 +304,10 @@ impl ManycoreSystem {
                     .ok_or(ConnectionUpdateError)?;
                 if eri.destination_column != eri.current_column {
                     // Column first
-
                     if eri.start_column > eri.destination_column {
                         // Going left
+                        ret.push((current_idx, FIFODirection::WestOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -302,6 +317,8 @@ impl ManycoreSystem {
                         )?;
                     } else {
                         // Going right
+                        ret.push((current_idx, FIFODirection::EastOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -315,6 +332,8 @@ impl ManycoreSystem {
 
                     if eri.start_id > eri.destination_id {
                         // Going up
+                        ret.push((current_idx, FIFODirection::NorthOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -324,6 +343,8 @@ impl ManycoreSystem {
                         )?;
                     } else {
                         // Going down
+                        ret.push((current_idx, FIFODirection::SouthOutput));
+
                         current_idx = ManycoreSystem::update_connection(
                             neighbours,
                             eri.communication_cost,
@@ -339,7 +360,7 @@ impl ManycoreSystem {
             }
         }
 
-        Ok(())
+        Ok(ret)
     }
 
     fn clear_links(&mut self) {
@@ -352,7 +373,7 @@ impl ManycoreSystem {
     pub fn task_graph_route(
         &mut self,
         algorithm: &RoutingAlgorithms,
-    ) -> Result<(), ConnectionUpdateError> {
+    ) -> Result<Vec<(usize, FIFODirection)>, ConnectionUpdateError> {
         self.clear_links();
 
         match algorithm {
@@ -361,13 +382,15 @@ impl ManycoreSystem {
         }
     }
 
-    pub fn observed_route(&mut self) -> Result<(), ConnectionUpdateError> {
+    pub fn observed_route(&mut self) -> Result<Vec<(usize, FIFODirection)>, ConnectionUpdateError> {
         self.clear_links();
         let ManycoreSystem {
             ref cores,
             ref mut connections,
             ..
         } = *self;
+
+        let mut ret: Vec<(usize, FIFODirection)> = Vec::new();
 
         for i in 0..cores.list().len() {
             if let Some(fifos) = cores.list()[i].fifos() {
@@ -376,6 +399,7 @@ impl ManycoreSystem {
                     if packets != 0 {
                         match direction {
                             FIFODirection::NorthOutput => {
+                                ret.push((i, FIFODirection::NorthOutput));
                                 let _ = ManycoreSystem::update_neighbour(
                                     connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
                                     packets as u8,
@@ -383,6 +407,8 @@ impl ManycoreSystem {
                                 )?;
                             }
                             FIFODirection::EastOutput => {
+                                ret.push((i, FIFODirection::EastOutput));
+
                                 let _ = ManycoreSystem::update_neighbour(
                                     connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
                                     packets as u8,
@@ -390,6 +416,8 @@ impl ManycoreSystem {
                                 )?;
                             }
                             FIFODirection::SouthOutput => {
+                                ret.push((i, FIFODirection::SouthOutput));
+
                                 let _ = ManycoreSystem::update_neighbour(
                                     connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
                                     packets as u8,
@@ -397,6 +425,8 @@ impl ManycoreSystem {
                                 )?;
                             }
                             FIFODirection::WestOutput => {
+                                ret.push((i, FIFODirection::WestOutput));
+
                                 let _ = ManycoreSystem::update_neighbour(
                                     connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
                                     packets as u8,
@@ -410,7 +440,7 @@ impl ManycoreSystem {
             }
         }
 
-        Ok(())
+        Ok(ret)
     }
 }
 
