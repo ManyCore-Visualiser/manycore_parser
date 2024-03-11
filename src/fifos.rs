@@ -36,6 +36,7 @@ pub struct FIFO {
     #[serde(rename = "@status")]
     status: FIFOStatus,
     #[serde(rename = "@bandwidth")]
+    #[getset(get = "pub")]
     bandwidth: u16,
 }
 
