@@ -38,7 +38,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub enum SinkSourceDirection {
     North,
     South,
