@@ -76,6 +76,7 @@ pub struct ManycoreSystem {
         serialize_with = "Source::serialize_btreemap_vector",
         deserialize_with = "Source::deserialize_btreemap_vector"
     )]
+    #[getset(get = "pub")]
     sources: BTreeMap<usize, Source>,
     /// Sinks
     #[serde(
@@ -84,6 +85,7 @@ pub struct ManycoreSystem {
         serialize_with = "Sink::serialize_btreemap_vector",
         deserialize_with = "Sink::deserialize_btreemap_vector"
     )]
+    #[getset(get = "pub")]
     sinks: BTreeMap<usize, Sink>,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// The provided task graph
@@ -216,9 +218,8 @@ mod tests {
 
     use crate::{
         sink_source::{Sink, SinkSourceDirection, Source},
-        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection,
-        FIFOStatus, FIFOs, ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO,
-        SUPPORTED_ALGORITHMS,
+        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection, FIFOStatus, FIFOs,
+        ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO, SUPPORTED_ALGORITHMS,
     };
 
     #[test]
