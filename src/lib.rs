@@ -70,10 +70,21 @@ pub struct ManycoreSystem {
     /// Algorithm used in the observed routing (FIFOs data)
     routing_algo: Option<String>,
     /// Sources
-    #[serde(rename = "Source", skip_serializing_if = "Option::is_none")]
-    sources: Option<Vec<Source>>,
-    #[serde(rename = "Sink", skip_serializing_if = "Option::is_none")]
-    sinks: Option<Vec<Sink>>,
+    #[serde(
+        rename = "Source",
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "Source::serialize_btreemap_vector",
+        deserialize_with = "Source::deserialize_btreemap_vector"
+    )]
+    sources: BTreeMap<usize, Source>,
+    /// Sinks
+    #[serde(
+        rename = "Sink",
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "Sink::serialize_btreemap_vector",
+        deserialize_with = "Sink::deserialize_btreemap_vector"
+    )]
+    sinks: BTreeMap<usize, Sink>,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// The provided task graph
     task_graph: TaskGraph,
@@ -189,7 +200,7 @@ impl ManycoreSystem {
             router: router_attributes,
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
             observed_algorithm: manycore.routing_algo.clone(),
-            sinks_sources: manycore.sinks.is_some() || manycore.sources.is_some(),
+            sinks_sources: !manycore.sinks.is_empty() || !manycore.sources.is_empty(),
         };
 
         Ok(manycore)
@@ -205,8 +216,9 @@ mod tests {
 
     use crate::{
         sink_source::{Sink, SinkSourceDirection, Source},
-        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection, FIFOStatus, FIFOs,
-        ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO, SUPPORTED_ALGORITHMS,
+        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection,
+        FIFOStatus, FIFOs, ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO,
+        SUPPORTED_ALGORITHMS,
     };
 
     #[test]
@@ -549,8 +561,9 @@ mod tests {
             columns: 3,
             rows: 3,
             routing_algo: Some(String::from("RowFirst")),
-            sources: Some(Vec::from([Source::new(1, SinkSourceDirection::North)])),
-            sinks: Some(Vec::from([Sink::new(5, SinkSourceDirection::East)])),
+            // sources: Some(Vec::from([Source::new(1, SinkSourceDirection::North)])),
+            sources: BTreeMap::from([(1, Source::new(1, SinkSourceDirection::North))]),
+            sinks: BTreeMap::from([(5, Sink::new(5, SinkSourceDirection::East))]),
             cores: Cores::new(expected_cores),
             task_graph: expected_graph,
             connections: expected_connections,
