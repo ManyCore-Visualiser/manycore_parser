@@ -10,6 +10,7 @@ mod utils;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::fmt::Display;
 
 pub use crate::cores::*;
 pub use crate::fifos::*;
@@ -107,7 +108,72 @@ pub struct ManycoreSystem {
     configurable_attributes: ConfigurableAttributes,
 }
 
+#[derive(Debug, Clone)]
+pub struct InfoError {
+    reason: String,
+}
+
+impl Display for InfoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.reason)
+    }
+}
+
 impl ManycoreSystem {
+    /// Gets all available info for specific core or router.
+    /// group_id looks something like "1r" or "20c", where r (router) and c (core) symbolise the variant,
+    /// and the number is the element's index.
+    pub fn get_core_router_specific_info(
+        &mut self,
+        mut group_id: String,
+    ) -> Result<Option<BTreeMap<String, String>>, InfoError> {
+        let variant_string = group_id
+            .pop()
+            .ok_or(InfoError {
+                reason: "Invalid group_id".into(),
+            })?
+            .to_string();
+
+        let core: &Core = self
+            .cores_mut()
+            .list_mut()
+            .get(group_id.parse::<usize>().map_err(|_| InfoError {
+                reason: "Invalid group_id".into(),
+            })?)
+            .ok_or(InfoError {
+                reason: "Invalid index".into(),
+            })?;
+
+        let insert_core_default = |mut tree: BTreeMap<String, String>| {
+            tree.insert("@id".into(), core.id().to_string());
+
+            if let Some(task_id) = core.allocated_task() {
+                tree.insert("@allocated_task".into(), task_id.to_string());
+            }
+
+            tree
+        };
+
+        match variant_string.as_str() {
+            "r" => {
+                let attributes_clone = core.router().other_attributes().clone();
+
+                Ok(attributes_clone)
+            }
+            "c" => {
+                let attributes_clone = core.other_attributes().clone();
+
+                match attributes_clone {
+                    Some(attributes) => Ok(Some(insert_core_default(attributes))),
+                    None => Ok(Some(insert_core_default(BTreeMap::new()))),
+                }
+            }
+            _ => Err(InfoError {
+                reason: "Invalid variant".into(),
+            }),
+        }
+    }
+
     fn populate_attribute_map<T: WithXMLAttributes>(
         item: &T,
         map: &mut HashMap<String, AttributeType>,
