@@ -19,6 +19,7 @@ pub use crate::router::*;
 pub use crate::routing::*;
 pub use crate::sink_source::*;
 use getset::{Getters, MutGetters, Setters};
+use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 
 pub trait WithXMLAttributes {
@@ -121,18 +122,19 @@ impl Display for InfoError {
 
 impl ManycoreSystem {
     /// Gets all available info for specific core or router.
-    /// group_id looks something like "1r" or "20c", where r (router) and c (core) symbolise the variant,
+    /// group_id looks something like "r1" or "c20", where r (router) and c (core) symbolise the variant,
     /// and the number is the element's index.
     pub fn get_core_router_specific_info(
         &self,
         mut group_id: String,
     ) -> Result<Option<BTreeMap<String, String>>, InfoError> {
-        let variant_string = group_id
-            .pop()
-            .ok_or(InfoError {
-                reason: "Invalid group_id".into(),
-            })?
-            .to_string();
+        if group_id.len() == 0 {
+            return Err(InfoError {
+                reason: "Empty group_id".into(),
+            });
+        };
+
+        let variant_string = group_id.remove(0).to_string();
 
         let core: &Core = self
             .cores()
