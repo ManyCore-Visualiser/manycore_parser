@@ -124,7 +124,7 @@ impl ManycoreSystem {
     /// group_id looks something like "1r" or "20c", where r (router) and c (core) symbolise the variant,
     /// and the number is the element's index.
     pub fn get_core_router_specific_info(
-        &mut self,
+        &self,
         mut group_id: String,
     ) -> Result<Option<BTreeMap<String, String>>, InfoError> {
         let variant_string = group_id
@@ -135,8 +135,8 @@ impl ManycoreSystem {
             .to_string();
 
         let core: &Core = self
-            .cores_mut()
-            .list_mut()
+            .cores()
+            .list()
             .get(group_id.parse::<usize>().map_err(|_| InfoError {
                 reason: "Invalid group_id".into(),
             })?)
