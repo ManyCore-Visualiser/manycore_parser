@@ -1,7 +1,7 @@
 //! A parser for Manycore System XML configuration files
 
+mod channels;
 mod cores;
-mod fifos;
 mod graph;
 mod router;
 mod routing;
@@ -12,14 +12,13 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Display;
 
+pub use crate::channels::*;
 pub use crate::cores::*;
-pub use crate::fifos::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
 pub use crate::sink_source::*;
 use getset::{Getters, MutGetters, Setters};
-use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 
 pub trait WithXMLAttributes {
@@ -69,7 +68,7 @@ pub struct ManycoreSystem {
     columns: u8,
     #[serde(rename = "@routing_algo", skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub")]
-    /// Algorithm used in the observed routing (FIFOs data)
+    /// Algorithm used in the observed routing (Channels data)
     routing_algo: Option<String>,
     /// Sources
     #[serde(
@@ -286,8 +285,8 @@ mod tests {
 
     use crate::{
         sink_source::{Sink, SinkSourceDirection, Source},
-        AttributeType, ConfigurableAttributes, Core, Cores, Edge, FIFODirection, FIFOStatus, FIFOs,
-        ManycoreSystem, Neighbours, Router, Task, TaskGraph, FIFO, SUPPORTED_ALGORITHMS,
+        AttributeType, Channel, Channels, ConfigurableAttributes, Core, Cores, Directions, Edge,
+        ChannelStatus, ManycoreSystem, Neighbours, Router, Task, TaskGraph, SUPPORTED_ALGORITHMS,
     };
 
     #[test]
@@ -320,116 +319,22 @@ mod tests {
                     ])),
                 ),
                 None,
-                Some(FIFOs::new(BTreeMap::from([
+                Some(Channels::new(BTreeMap::from([
                     (
-                        FIFODirection::NorthInput,
-                        FIFO::new(
-                            FIFODirection::NorthInput,
-                            30,
-                            1,
-                            Some(0),
-                            FIFOStatus::Normal,
-                            400,
-                        ),
+                        Directions::North,
+                        Channel::new(Directions::North, 30, 0, None, ChannelStatus::Normal, 400),
                     ),
                     (
-                        FIFODirection::NorthOutput,
-                        FIFO::new(
-                            FIFODirection::NorthOutput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
+                        Directions::South,
+                        Channel::new(Directions::South, 30, 1, Some(0), ChannelStatus::Normal, 400),
                     ),
                     (
-                        FIFODirection::SouthInput,
-                        FIFO::new(
-                            FIFODirection::SouthInput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
+                        Directions::East,
+                        Channel::new(Directions::East, 30, 0, None, ChannelStatus::Normal, 400),
                     ),
                     (
-                        FIFODirection::SouthOutput,
-                        FIFO::new(
-                            FIFODirection::SouthOutput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::EastInput,
-                        FIFO::new(
-                            FIFODirection::EastInput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::EastOutput,
-                        FIFO::new(
-                            FIFODirection::EastOutput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::WestInput,
-                        FIFO::new(
-                            FIFODirection::WestInput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::WestOutput,
-                        FIFO::new(
-                            FIFODirection::WestOutput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::LocalInput,
-                        FIFO::new(
-                            FIFODirection::LocalInput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        FIFODirection::LocalOutput,
-                        FIFO::new(
-                            FIFODirection::LocalOutput,
-                            30,
-                            0,
-                            None,
-                            FIFOStatus::Normal,
-                            400,
-                        ),
+                        Directions::West,
+                        Channel::new(Directions::West, 30, 0, None, ChannelStatus::Normal, 400),
                     ),
                 ]))),
                 Some(BTreeMap::from([
@@ -626,7 +531,7 @@ mod tests {
                 "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
             ),
             xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
-            xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/b74fb761f3d6048de24eeb32607423e43ee4ced2/manycore_schema.xsd"),
+            xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/a13c07cb6052fb16dea4d1b311a0bb0db48519b2/manycore_schema.xsd"),
             columns: 3,
             rows: 3,
             routing_algo: Some(String::from("RowFirst")),

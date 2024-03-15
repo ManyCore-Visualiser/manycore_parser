@@ -4,28 +4,22 @@ use getset::Getters;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
-pub enum FIFODirection {
-    NorthInput,
-    NorthOutput,
-    SouthInput,
-    SouthOutput,
-    EastInput,
-    EastOutput,
-    WestInput,
-    WestOutput,
-    LocalInput,
-    LocalOutput,
+pub enum Directions {
+    North,
+    South,
+    West,
+    East,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub enum FIFOStatus {
+pub enum ChannelStatus {
     Normal,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
-pub struct FIFO {
+pub struct Channel {
     #[serde(rename = "@direction")]
-    direction: FIFODirection,
+    direction: Directions,
     #[serde(rename = "@age")]
     age: u8,
     #[serde(rename = "@packets_transmitted")]
@@ -34,19 +28,19 @@ pub struct FIFO {
     #[serde(skip_serializing_if = "Option::is_none", rename = "@packet_index")]
     packet_index: Option<u8>,
     #[serde(rename = "@status")]
-    status: FIFOStatus,
+    status: ChannelStatus,
     #[serde(rename = "@bandwidth")]
     #[getset(get = "pub")]
     bandwidth: u16,
 }
 
-impl FIFO {
+impl Channel {
     pub fn new(
-        direction: FIFODirection,
+        direction: Directions,
         age: u8,
         packets_transmitted: u16,
         packet_index: Option<u8>,
-        status: FIFOStatus,
+        status: ChannelStatus,
         bandwidth: u16,
     ) -> Self {
         Self {
@@ -61,39 +55,39 @@ impl FIFO {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
-pub struct FIFOs {
+pub struct Channels {
     #[serde(
-        rename = "FIFO",
-        deserialize_with = "FIFOs::deserialize_fifos",
-        serialize_with = "FIFOs::serialize_fifos"
+        rename = "Channel",
+        deserialize_with = "Channels::deserialize_channels",
+        serialize_with = "Channels::serialize_channels"
     )]
     #[getset(get = "pub")]
-    fifo: BTreeMap<FIFODirection, FIFO>,
+    channel: BTreeMap<Directions, Channel>,
 }
 
-impl FIFOs {
-    pub fn new(fifo: BTreeMap<FIFODirection, FIFO>) -> Self {
-        Self { fifo }
+impl Channels {
+    pub fn new(channel: BTreeMap<Directions, Channel>) -> Self {
+        Self { channel }
     }
 
-    fn deserialize_fifos<'de, D: Deserializer<'de>>(
+    fn deserialize_channels<'de, D: Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<BTreeMap<FIFODirection, FIFO>, D::Error> {
-        let fifo_vec: Vec<FIFO> = Deserialize::deserialize(deserializer)?;
+    ) -> Result<BTreeMap<Directions, Channel>, D::Error> {
+        let channel_vec: Vec<Channel> = Deserialize::deserialize(deserializer)?;
 
         let mut ret = BTreeMap::new();
 
-        for fifo in fifo_vec {
-            ret.insert(fifo.direction, fifo);
+        for channel in channel_vec {
+            ret.insert(channel.direction, channel);
         }
 
         Ok(ret)
     }
 
-    fn serialize_fifos<S: Serializer>(
-        fifo: &BTreeMap<FIFODirection, FIFO>,
+    fn serialize_channels<S: Serializer>(
+        channel: &BTreeMap<Directions, Channel>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        serializer.collect_seq(fifo.values())
+        serializer.collect_seq(channel.values())
     }
 }

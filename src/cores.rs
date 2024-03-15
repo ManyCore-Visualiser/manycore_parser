@@ -1,4 +1,4 @@
-use crate::{fifos::FIFOs, router::*, utils, WithXMLAttributes};
+use crate::{channels::Channels, router::*, utils, WithXMLAttributes};
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
@@ -13,8 +13,11 @@ pub struct Core {
     router: Router,
     #[serde(rename = "@allocated_task", skip_serializing_if = "Option::is_none")]
     allocated_task: Option<u16>,
-    #[serde(rename = "FIFOs", skip_serializing_if = "Core::skip_serializing_fifos")]
-    fifos: Option<FIFOs>,
+    #[serde(
+        rename = "Channels",
+        skip_serializing_if = "Core::skip_serializing_channels"
+    )]
+    channels: Option<Channels>,
     #[serde(
         flatten,
         skip_serializing_if = "Option::is_none",
@@ -29,20 +32,20 @@ impl Core {
         id: u8,
         router: Router,
         allocated_task: Option<u16>,
-        fifos: Option<FIFOs>,
+        channels: Option<Channels>,
         other_attributes: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
             id,
             router,
             allocated_task,
-            fifos,
+            channels,
             other_attributes,
         }
     }
 
-    fn skip_serializing_fifos(fifos: &Option<FIFOs>) -> bool {
-        !fifos.as_ref().is_some_and(|f| !f.fifo().is_empty())
+    fn skip_serializing_channels(channels: &Option<Channels>) -> bool {
+        !channels.as_ref().is_some_and(|c| !c.channel().is_empty())
     }
 }
 
