@@ -10,6 +10,7 @@ mod utils;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::error::Error;
 use std::fmt::Display;
 
 pub use crate::channels::*;
@@ -35,20 +36,27 @@ pub enum AttributeType {
     Number,
 }
 
-// This will be serialised as JSON
+/// A struct containing information about what customisation
+/// parameters to provide the user with.
+/// This will be serialised as JSON
 #[derive(Serialize, Debug, PartialEq, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
+    /// Core parameters. The key is the parameter name, value is parameter type.
     core: HashMap<String, AttributeType>,
+    /// Router parameters. The key is the parameter name, value is parameter type.
     router: HashMap<String, AttributeType>,
+    /// A list of supported routing algorithms.
     algorithms: Vec<RoutingAlgorithms>,
+    /// Denotes the presence of an observed routing outcome.
     observed_algorithm: Option<String>,
+    /// Denotes the presence of edge routers.
     sinks_sources: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
-/// This struct represents the many core system that was provided as input via XML
+/// This struct represents the many core system that was provided as input via XML.
 pub struct ManycoreSystem {
     #[serde(rename = "@xmlns")]
     xmlns: String,
@@ -60,17 +68,17 @@ pub struct ManycoreSystem {
     xsi_schema_location: String,
     #[getset(get = "pub")]
     #[serde(rename = "@rows")]
-    /// Rows in the cores matrix
+    /// Rows in the cores matrix.
     rows: u8,
     #[serde(rename = "@columns")]
     #[getset(get = "pub")]
-    /// Columns in the cores matrix
+    /// Columns in the cores matrix.
     columns: u8,
     #[serde(rename = "@routing_algo", skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub")]
-    /// Algorithm used in the observed routing (Channels data)
+    /// Algorithm used in the observed routing (Channels data), if any.
     routing_algo: Option<String>,
-    /// Sources
+    /// Sources (edge routers).
     #[serde(
         rename = "Source",
         skip_serializing_if = "BTreeMap::is_empty",
@@ -79,7 +87,7 @@ pub struct ManycoreSystem {
     )]
     #[getset(get = "pub")]
     sources: BTreeMap<usize, Source>,
-    /// Sinks
+    /// Sinks (edge routers).
     #[serde(
         rename = "Sink",
         skip_serializing_if = "BTreeMap::is_empty",
@@ -89,14 +97,14 @@ pub struct ManycoreSystem {
     #[getset(get = "pub")]
     sinks: BTreeMap<usize, Sink>,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// The provided task graph
+    /// The provided task graph.
     task_graph: TaskGraph,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// The system's cores
+    /// The system's cores.
     cores: Cores,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// This is not part of the XML and is used in the routing logic. It is a map with the core IDs as key and the core (router) connections as value.
+    /// This is not part of the XML and is used in the routing logic. It is a map with the core IDs as key and the core (router) possible connections as value.
     connections: HashMap<usize, Neighbours>,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
@@ -108,9 +116,11 @@ pub struct ManycoreSystem {
     configurable_attributes: ConfigurableAttributes,
 }
 
+/// A struct to wrap element (core, router) information retrieval errors.
 #[derive(Debug, Clone)]
 pub struct InfoError {
-    reason: String,
+    /// The error's root cause.
+    reason: &'static str,
 }
 
 impl Display for InfoError {
@@ -118,6 +128,8 @@ impl Display for InfoError {
         write!(f, "{}", self.reason)
     }
 }
+
+impl Error for InfoError {}
 
 impl ManycoreSystem {
     /// Gets all available info for specific core or router.
@@ -129,7 +141,7 @@ impl ManycoreSystem {
     ) -> Result<Option<BTreeMap<String, String>>, InfoError> {
         if group_id.len() == 0 {
             return Err(InfoError {
-                reason: "Empty group_id".into(),
+                reason: "Empty group_id",
             });
         };
 
@@ -139,12 +151,14 @@ impl ManycoreSystem {
             .cores()
             .list()
             .get(group_id.parse::<usize>().map_err(|_| InfoError {
-                reason: "Invalid group_id".into(),
+                reason: "Invalid group_id",
             })?)
             .ok_or(InfoError {
-                reason: "Invalid index".into(),
+                reason: "Invalid index",
             })?;
 
+        // id and allocated_task are not part of the core "other_attributes" field so we shall
+        // add them manually.
         let insert_core_default = |mut tree: BTreeMap<String, String>| {
             tree.insert("@id".into(), core.id().to_string());
 
@@ -157,6 +171,7 @@ impl ManycoreSystem {
 
         match variant_string.as_str() {
             "r" => {
+                // All relevant router info is already stored in the "other_attributes" map.
                 let attributes_clone = core.router().other_attributes().clone();
 
                 Ok(attributes_clone)
@@ -164,24 +179,30 @@ impl ManycoreSystem {
             "c" => {
                 let attributes_clone = core.other_attributes().clone();
 
+                // We clone the core's map and insert missing fields.
                 match attributes_clone {
                     Some(attributes) => Ok(Some(insert_core_default(attributes))),
                     None => Ok(Some(insert_core_default(BTreeMap::new()))),
                 }
             }
             _ => Err(InfoError {
-                reason: "Invalid variant".into(),
+                reason: "Invalid variant",
             }),
         }
     }
 
+    /// Retrieves all available attributes and their type, and inserts them in the given map.
     fn populate_attribute_map<T: WithXMLAttributes>(
         item: &T,
         map: &mut HashMap<String, AttributeType>,
     ) {
+        // Are there any attributes we can inspect?
         if let Some(other_attributes) = item.other_attributes() {
             for (key, value) in other_attributes {
+                // It's worth inspecting the attribute only if missing in the map.
                 if !map.contains_key(key) {
+                    // If parsing the attribute value as a number fails, the attribute must
+                    // be a string.
                     let attribute_type = match value.parse::<u64>() {
                         Ok(_) => AttributeType::Number,
                         Err(_) => AttributeType::Text,
@@ -192,12 +213,15 @@ impl ManycoreSystem {
             }
         }
     }
+
+    /// Deserialises an XML file into a ManycoreSystem struct.
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, Box<dyn std::error::Error>> {
         let file_content = std::fs::read_to_string(path)?;
 
         let mut manycore: ManycoreSystem = quick_xml::de::from_str(&file_content)?;
 
-        // Sort cores by id
+        // Sort cores by id. This is potentially unnecessary if the file contains,
+        // cores in an ordered manner but that is not a guarantee.
         manycore
             .cores_mut()
             .list_mut()
@@ -208,11 +232,17 @@ impl ManycoreSystem {
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
         for i in 0..=last {
-            // Neighbours
+            // Neighbour resolving logic START
+            // Here we workout all the possible neighbours a node might
+            // have based on its index. Note that this works only for a
+            // 2D matrix.
+            let mut neighbours = Neighbours::default();
+
             let right = i + 1;
+            // If i is greater or equal to the number of columns, we are on the
+            // second row (i is 0 indexed).
             let top = i >= usize_columns;
             let bottom = i + usize_columns;
-            let mut neighbours = Neighbours::default();
 
             // Right
             if right % usize_columns != 0 {
@@ -230,11 +260,15 @@ impl ManycoreSystem {
             }
 
             // Bottom
+            // bottom is defined as i + usize_columns. Effectively, we are checking
+            // if a row exists past the current i.
             if bottom <= last {
                 neighbours.set_bottom(Neighbour::new(Some(bottom)));
             }
 
             manycore.connections_mut().insert(i, neighbours);
+
+            // Neighbour resolving logic END
 
             // task -> core map
             if let Some(task_id) = manycore.cores().list()[i].allocated_task().as_ref() {
@@ -242,11 +276,7 @@ impl ManycoreSystem {
             }
 
             // router ID
-            manycore
-                .cores_mut()
-                .list_mut()
-                .get_mut(i)
-                .unwrap()
+            manycore.cores_mut().list_mut()[i]
                 .router_mut()
                 .set_id(i as u8);
         }
@@ -254,8 +284,9 @@ impl ManycoreSystem {
         // Store map
         manycore.task_core_map = task_core_map;
 
-        // Workout attributes
+        // Workout configurable attributes
         let mut core_attributes: HashMap<String, AttributeType> = HashMap::new();
+        // Manually insert core attributes that are not part of the "other_attributes" map.
         core_attributes.insert("@id".to_string(), AttributeType::Text);
         core_attributes.insert("@coordinates".to_string(), AttributeType::Text);
         let mut router_attributes: HashMap<String, AttributeType> = HashMap::new();
@@ -285,8 +316,9 @@ mod tests {
 
     use crate::{
         sink_source::{Sink, SinkSourceDirection, Source},
-        AttributeType, Channel, Channels, ConfigurableAttributes, Core, Cores, Directions, Edge,
-        ChannelStatus, ManycoreSystem, Neighbours, Router, Task, TaskGraph, SUPPORTED_ALGORITHMS,
+        AttributeType, Channel, ChannelStatus, Channels, ConfigurableAttributes, Core, Cores,
+        Directions, Edge, ManycoreSystem, Neighbours, Router, Task, TaskGraph,
+        SUPPORTED_ALGORITHMS,
     };
 
     #[test]
@@ -326,7 +358,14 @@ mod tests {
                     ),
                     (
                         Directions::South,
-                        Channel::new(Directions::South, 30, 1, Some(0), ChannelStatus::Normal, 400),
+                        Channel::new(
+                            Directions::South,
+                            30,
+                            1,
+                            Some(0),
+                            ChannelStatus::Normal,
+                            400,
+                        ),
                     ),
                     (
                         Directions::East,

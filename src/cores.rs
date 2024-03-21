@@ -3,21 +3,27 @@ use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
 
+/// A system's core.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters, Setters, MutGetters)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
 pub struct Core {
+    /// The core id.
     #[serde(rename = "@id")]
     #[getset(skip)]
     id: u8,
+    /// The router connected to the core.
     #[serde(rename = "Router")]
     router: Router,
+    /// The task allocated to the core, if any.
     #[serde(rename = "@allocated_task", skip_serializing_if = "Option::is_none")]
     allocated_task: Option<u16>,
+    /// The communication channels associated with this core.
     #[serde(
         rename = "Channels",
         skip_serializing_if = "Core::skip_serializing_channels"
     )]
     channels: Option<Channels>,
+    /// Any other core attribute present in the XML.
     #[serde(
         flatten,
         skip_serializing_if = "Option::is_none",
@@ -28,6 +34,7 @@ pub struct Core {
 }
 
 impl Core {
+    /// Instantiates a new core.
     pub fn new(
         id: u8,
         router: Router,
@@ -44,6 +51,7 @@ impl Core {
         }
     }
 
+    /// Helper function to determine whether to serialise channels or not.
     fn skip_serializing_channels(channels: &Option<Channels>) -> bool {
         !channels.as_ref().is_some_and(|c| !c.channel().is_empty())
     }
@@ -70,6 +78,7 @@ impl WithXMLAttributes for Core {
     }
 }
 
+/// List of cores in the system.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters, Clone)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
 pub struct Cores {
@@ -78,6 +87,7 @@ pub struct Cores {
 }
 
 impl Cores {
+    /// Instantiates a new Cores instance.
     pub fn new(list: Vec<Core>) -> Self {
         Self { list }
     }

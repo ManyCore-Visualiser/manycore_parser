@@ -5,18 +5,23 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Cores, Directions, Edge, ManycoreSystem, WithXMLAttributes};
 
+/// A neighbour.
 #[derive(Default, Debug, PartialEq, Clone, Getters)]
 #[getset(get = "pub")]
 pub struct Neighbour {
+    /// The neighbour id.
     id: usize,
+    /// The load on this channel.
     link_cost: u8,
 }
 
 impl Neighbour {
+    /// Adds to the channel's load.
     fn add_to_cost(&mut self, cost: u8) {
         self.link_cost += cost;
     }
 
+    /// Instantiates a new neighbour if a neighbour id is given, else returns None.
     pub fn new(id: Option<usize>) -> Option<Neighbour> {
         if let Some(id) = id {
             return Some(Neighbour { id, link_cost: 0 });
@@ -26,6 +31,7 @@ impl Neighbour {
     }
 }
 
+/// Holds options for each possible neighbour. Is None if there is no connection.
 #[derive(Default, Debug, PartialEq, Getters, MutGetters, Setters, Clone)]
 #[getset(get = "pub", get_mut = "pub", set = "pub")]
 pub struct Neighbours {
@@ -36,6 +42,7 @@ pub struct Neighbours {
 }
 
 impl Neighbours {
+    /// Instantiates a new neighbours instance.
     pub fn new(
         top: Option<usize>,
         right: Option<usize>,
@@ -50,6 +57,7 @@ impl Neighbours {
         }
     }
 
+    /// Resets all loads on every channel.
     fn clear_link_costs(&mut self) {
         if let Some(top) = &mut self.top {
             top.link_cost = 0;
@@ -69,6 +77,7 @@ impl Neighbours {
     }
 }
 
+/// An enum storing all supported routing algorithms.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum RoutingAlgorithms {
     Observed,
@@ -76,20 +85,30 @@ pub enum RoutingAlgorithms {
     ColumnFirst,
 }
 
+/// Array used to expose supported algorithms as a configurable field.
 pub static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 3] = [
     RoutingAlgorithms::Observed,
     RoutingAlgorithms::RowFirst,
     RoutingAlgorithms::ColumnFirst,
 ];
 
+/// Provides information for routing a task graph edge.
 struct EdgeRoutingInformation {
+    /// The source core id.
     start_id: u8,
+    /// The source core column.
     start_column: u8,
+    /// The destination core id.
     destination_id: u8,
+    /// The current routing column.
     current_column: u8,
+    /// The current routing row.
     current_row: u8,
+    /// The destination core column.
     destination_column: u8,
+    /// The destination core row.
     destination_row: u8,
+    /// The edge cost.
     communication_cost: u8,
 }
 
@@ -108,6 +127,7 @@ impl Display for ConnectionUpdateError {
 impl Error for ConnectionUpdateError {}
 
 impl ManycoreSystem {
+    /// Returns the core upon which the given task id is mapped.
     fn task_id_to_core_id<'a>(
         task_core_map: &'a HashMap<u16, usize>,
         task_id: &'a u16,
@@ -115,6 +135,7 @@ impl ManycoreSystem {
         task_core_map.get(task_id).ok_or(ConnectionUpdateError)
     }
 
+    /// Calculates required routing information for the given task graph edge.
     fn calculate_edge_routing_information(
         cores: &Cores,
         task_core_map: &HashMap<u16, usize>,
@@ -147,6 +168,7 @@ impl ManycoreSystem {
         })
     }
 
+    /// Updates a neighbour's load.
     fn update_neighbour<'a>(
         neighbours: &'a mut Neighbours,
         cost: u8,
@@ -161,6 +183,7 @@ impl ManycoreSystem {
         Ok(neighbour)
     }
 
+    /// Updates the current connection and returns the id of the reached neighbour.
     fn update_connection(
         neighbours: &mut Neighbours,
         cost: u8,
@@ -170,6 +193,7 @@ impl ManycoreSystem {
     ) -> Result<usize, ConnectionUpdateError> {
         let neighbour = ManycoreSystem::update_neighbour(neighbours, cost, neighbour_selector)?;
 
+        // For code reusability, this function can mutate row/column index in both directions.
         if positive_delta {
             *delta_target += 1;
         } else {
@@ -179,6 +203,7 @@ impl ManycoreSystem {
         Ok(neighbour.id)
     }
 
+    /// RowFirst algorithm implementation.
     fn row_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
         let ManycoreSystem {
             ref cores,
@@ -190,9 +215,10 @@ impl ManycoreSystem {
             ..
         } = *self;
 
-        // Return value. Stores non-zero core-edge pairs
+        // Return value. Stores non-zero core-edge pairs.
         let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
 
+        // This closure adds a key-value pair to the result.
         let mut add_to_ret = |i: usize, direction: Directions| {
             ret.entry(i).or_insert(Vec::new()).push(direction);
         };
@@ -274,6 +300,7 @@ impl ManycoreSystem {
         Ok(ret)
     }
 
+    /// ColumnFirst algorithm implementation.
     fn column_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
         let ManycoreSystem {
             ref cores,
@@ -288,6 +315,7 @@ impl ManycoreSystem {
         // Return value. Stores non-zero core-edge pairs
         let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
 
+        // This closure adds a key-value pair to the result.
         let mut add_to_ret = |i: usize, direction: Directions| {
             ret.entry(i).or_insert(Vec::new()).push(direction);
         };
@@ -370,6 +398,7 @@ impl ManycoreSystem {
         Ok(ret)
     }
 
+    /// Observed route implementation. Mirrors Channels information.
     fn observed_route(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
         self.clear_links();
         let ManycoreSystem {
@@ -435,6 +464,7 @@ impl ManycoreSystem {
         Ok(ret)
     }
 
+    /// Clears all links loads.
     fn clear_links(&mut self) {
         // Zero out all links costs
         (&mut self.connections)
@@ -442,6 +472,7 @@ impl ManycoreSystem {
             .for_each(|(_, neighbours)| neighbours.clear_link_costs());
     }
 
+    /// Performs routing according to the requested algorithm.
     pub fn route(
         &mut self,
         algorithm: &RoutingAlgorithms,

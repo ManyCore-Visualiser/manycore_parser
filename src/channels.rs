@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use getset::Getters;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// An enum containing all allowed channel directions.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub enum Directions {
     North,
@@ -11,30 +12,39 @@ pub enum Directions {
     East,
 }
 
+/// An enum containing all the possible channel states.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum ChannelStatus {
     Normal,
 }
 
+/// A channel.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
 pub struct Channel {
+    /// The channel's direction.
     #[serde(rename = "@direction")]
     direction: Directions,
+    /// The channel's age.
     #[serde(rename = "@age")]
     age: u8,
+    /// Number of packets transmitted over the channel.
     #[serde(rename = "@packets_transmitted")]
     #[getset(get = "pub")]
     packets_transmitted: u16,
+    /// Index of current packet on the channel.
     #[serde(skip_serializing_if = "Option::is_none", rename = "@packet_index")]
     packet_index: Option<u8>,
+    /// The channel's status.
     #[serde(rename = "@status")]
     status: ChannelStatus,
+    /// The channel's bandwidth.
     #[serde(rename = "@bandwidth")]
     #[getset(get = "pub")]
     bandwidth: u16,
 }
 
 impl Channel {
+    /// Instantiates a new channel.
     pub fn new(
         direction: Directions,
         age: u8,
@@ -54,8 +64,10 @@ impl Channel {
     }
 }
 
+/// A router's channels map.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
 pub struct Channels {
+    /// A map of channels that uses direction as key and the channel itself as value.
     #[serde(
         rename = "Channel",
         deserialize_with = "Channels::deserialize_channels",
@@ -66,10 +78,12 @@ pub struct Channels {
 }
 
 impl Channels {
+    /// Instantiates a new Channels instance.
     pub fn new(channel: BTreeMap<Directions, Channel>) -> Self {
         Self { channel }
     }
 
+    /// Helper function that deserialises channels vector as a BTreeMap.
     fn deserialize_channels<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<BTreeMap<Directions, Channel>, D::Error> {
@@ -84,6 +98,7 @@ impl Channels {
         Ok(ret)
     }
 
+    /// Helper function to serialise channels BTreeMap as Vector.
     fn serialize_channels<S: Serializer>(
         channel: &BTreeMap<Directions, Channel>,
         serializer: S,
