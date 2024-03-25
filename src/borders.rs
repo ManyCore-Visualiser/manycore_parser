@@ -1,5 +1,14 @@
-use getset::Getters;
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+
+use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
+
+use self::sink::Sink;
+use self::source::Source;
+
+pub mod sink;
+pub mod source;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, PartialOrd, Ord, Clone)]
 pub enum SinkSourceDirection {
@@ -9,56 +18,22 @@ pub enum SinkSourceDirection {
     West,
 }
 
-#[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone)]
-#[getset(get = "pub")]
-pub struct Sink {
-    #[serde(rename = "@coreID")]
-    core_id: usize,
-    #[serde(rename = "@direction")]
-    direction: SinkSourceDirection,
-    #[serde(rename = "@taskid")]
-    task_id: u16,
-}
-
-#[cfg(test)]
-impl Sink {
-    pub fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
-        Self {
-            core_id,
-            direction,
-            task_id,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone)]
-#[getset(get = "pub")]
-pub struct Source {
-    #[serde(rename = "@coreID")]
-    core_id: usize,
-    #[serde(rename = "@direction")]
-    direction: SinkSourceDirection,
-    #[serde(rename = "@taskid")]
-    task_id: u16,
-}
-
-#[cfg(test)]
-impl Source {
-    pub fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
-        Self {
-            core_id,
-            direction,
-            task_id,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Borders {
-    #[serde(rename = "Source", skip_serializing_if = "Vec::is_empty")]
-    sources: Vec<Source>,
-    #[serde(rename = "Sink", skip_serializing_if = "Vec::is_empty")]
-    sinks: Vec<Sink>,
+    #[serde(
+        rename = "Source",
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "Source::serialize_btree_vector",
+        deserialize_with = "Source::deserialize_btree_vector"
+    )]
+    sources: BTreeMap<BTreeVectorKeys, Source>,
+    #[serde(
+        rename = "Sink",
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "Sink::serialize_btree_vector",
+        deserialize_with = "Sink::deserialize_btree_vector"
+    )]
+    sinks: BTreeMap<BTreeVectorKeys, Sink>,
 }
 
 impl Borders {
@@ -67,7 +42,10 @@ impl Borders {
     }
 
     #[cfg(test)]
-    pub fn new(sinks: Vec<Sink>, sources: Vec<Source>) -> Self {
+    pub fn new(
+        sinks: BTreeMap<BTreeVectorKeys, Sink>,
+        sources: BTreeMap<BTreeVectorKeys, Source>,
+    ) -> Self {
         Self { sinks, sources }
     }
 }

@@ -6,9 +6,10 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    AttributeType, Borders, Channel, ChannelStatus, Channels, ConfigurableAttributes, Core, Cores,
-    Directions, Edge, ManycoreSystem, Neighbours, Router, Sink, SinkSourceDirection, Source, Task,
-    TaskGraph, WithXMLAttributes, SUPPORTED_ALGORITHMS,
+    sink::Sink, source::Source, utils::btree::BTreeVectorKeys, AttributeType, Borders, Channel,
+    ChannelStatus, Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
+    Neighbours, Router, SinkSourceDirection, Task, TaskGraph, WithXMLAttributes,
+    SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -207,10 +208,19 @@ fn can_parse() {
 
     let expected_task_core_map = HashMap::from([(3u16, 1usize), (2u16, 7usize), (4u16, 5usize)]);
 
-    let expected_sinks = Vec::from([Sink::new(6, SinkSourceDirection::East, 5)]);
-    let expected_sources = Vec::from([
-        Source::new(1, SinkSourceDirection::North, 0),
-        Source::new(0, SinkSourceDirection::West, 1),
+    let expected_sinks = BTreeMap::from([(
+        BTreeVectorKeys::usize(6),
+        Sink::new(6, SinkSourceDirection::East, 5),
+    )]);
+    let expected_sources = BTreeMap::from([
+        (
+            BTreeVectorKeys::usize(1),
+            Source::new(1, SinkSourceDirection::North, 0),
+        ),
+        (
+            BTreeVectorKeys::usize(0),
+            Source::new(0, SinkSourceDirection::West, 1),
+        ),
     ]);
 
     let expected_manycore = ManycoreSystem {
