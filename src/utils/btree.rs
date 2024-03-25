@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub enum BTreeVectorKeys {
     usize(usize),
+    u32(u32),
 }
 
 pub trait BTreeVector: Clone {

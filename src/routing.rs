@@ -204,272 +204,272 @@ impl ManycoreSystem {
     }
 
     /// RowFirst algorithm implementation.
-    fn row_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
-        let ManycoreSystem {
-            ref cores,
-            ref columns,
-            ref rows,
-            ref task_graph,
-            ref mut connections,
-            ref task_core_map,
-            ..
-        } = *self;
+    // fn row_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    //     let ManycoreSystem {
+    //         ref cores,
+    //         ref columns,
+    //         ref rows,
+    //         ref task_graph,
+    //         ref mut connections,
+    //         ref task_core_map,
+    //         ..
+    //     } = *self;
 
-        // Return value. Stores non-zero core-edge pairs.
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
+    //     // Return value. Stores non-zero core-edge pairs.
+    //     let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
 
-        // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
-        };
+    //     // This closure adds a key-value pair to the result.
+    //     let mut add_to_ret = |i: usize, direction: Directions| {
+    //         ret.entry(i).or_insert(Vec::new()).push(direction);
+    //     };
 
-        // For each edge in the task graph
-        for edge in task_graph.edges() {
-            let mut eri = ManycoreSystem::calculate_edge_routing_information(
-                cores,
-                task_core_map,
-                edge,
-                columns,
-                rows,
-            )?;
+    //     // For each edge in the task graph
+    //     for edge in task_graph.edges() {
+    //         let mut eri = ManycoreSystem::calculate_edge_routing_information(
+    //             cores,
+    //             task_core_map,
+    //             edge,
+    //             columns,
+    //             rows,
+    //         )?;
 
-            let mut current_idx = usize::from(eri.start_id);
+    //         let mut current_idx = usize::from(eri.start_id);
 
-            // We must update every connection in the routers matrix
-            loop {
-                let neighbours = connections
-                    .get_mut(&current_idx)
-                    .ok_or(ConnectionUpdateError)?;
-                if eri.destination_row != eri.current_row {
-                    // Row first
-                    if eri.start_id > eri.destination_id {
-                        // Going up
-                        add_to_ret(current_idx, Directions::North);
+    //         // We must update every connection in the routers matrix
+    //         loop {
+    //             let neighbours = connections
+    //                 .get_mut(&current_idx)
+    //                 .ok_or(ConnectionUpdateError)?;
+    //             if eri.destination_row != eri.current_row {
+    //                 // Row first
+    //                 if eri.start_id > eri.destination_id {
+    //                     // Going up
+    //                     add_to_ret(current_idx, Directions::North);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            false,
-                            &Neighbours::top_mut,
-                        )?;
-                    } else {
-                        // Going down
-                        add_to_ret(current_idx, Directions::South);
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_row,
+    //                         false,
+    //                         &Neighbours::top_mut,
+    //                     )?;
+    //                 } else {
+    //                     // Going down
+    //                     add_to_ret(current_idx, Directions::South);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            true,
-                            &Neighbours::bottom_mut,
-                        )?;
-                    }
-                } else if eri.destination_column != eri.current_column {
-                    // Then column
-                    if eri.start_column > eri.destination_column {
-                        // Going left
-                        add_to_ret(current_idx, Directions::West);
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_row,
+    //                         true,
+    //                         &Neighbours::bottom_mut,
+    //                     )?;
+    //                 }
+    //             } else if eri.destination_column != eri.current_column {
+    //                 // Then column
+    //                 if eri.start_column > eri.destination_column {
+    //                     // Going left
+    //                     add_to_ret(current_idx, Directions::West);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            false,
-                            &Neighbours::left_mut,
-                        )?;
-                    } else {
-                        // Going right
-                        add_to_ret(current_idx, Directions::East);
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_column,
+    //                         false,
+    //                         &Neighbours::left_mut,
+    //                     )?;
+    //                 } else {
+    //                     // Going right
+    //                     add_to_ret(current_idx, Directions::East);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            true,
-                            &Neighbours::right_mut,
-                        )?;
-                    }
-                } else {
-                    // We reached the destination
-                    break;
-                }
-            }
-        }
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_column,
+    //                         true,
+    //                         &Neighbours::right_mut,
+    //                     )?;
+    //                 }
+    //             } else {
+    //                 // We reached the destination
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-        Ok(ret)
-    }
+    //     Ok(ret)
+    // }
 
     /// ColumnFirst algorithm implementation.
-    fn column_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
-        let ManycoreSystem {
-            ref cores,
-            ref columns,
-            ref rows,
-            ref task_graph,
-            ref mut connections,
-            ref task_core_map,
-            ..
-        } = *self;
+    // fn column_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    //     let ManycoreSystem {
+    //         ref cores,
+    //         ref columns,
+    //         ref rows,
+    //         ref task_graph,
+    //         ref mut connections,
+    //         ref task_core_map,
+    //         ..
+    //     } = *self;
 
-        // Return value. Stores non-zero core-edge pairs
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
+    //     // Return value. Stores non-zero core-edge pairs
+    //     let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
 
-        // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
-        };
+    //     // This closure adds a key-value pair to the result.
+    //     let mut add_to_ret = |i: usize, direction: Directions| {
+    //         ret.entry(i).or_insert(Vec::new()).push(direction);
+    //     };
 
-        // For each edge in the task graph
-        for edge in task_graph.edges() {
-            let mut eri = ManycoreSystem::calculate_edge_routing_information(
-                cores,
-                task_core_map,
-                edge,
-                columns,
-                rows,
-            )?;
+    //     // For each edge in the task graph
+    //     for edge in task_graph.edges() {
+    //         let mut eri = ManycoreSystem::calculate_edge_routing_information(
+    //             cores,
+    //             task_core_map,
+    //             edge,
+    //             columns,
+    //             rows,
+    //         )?;
 
-            let mut current_idx = usize::from(eri.start_id);
+    //         let mut current_idx = usize::from(eri.start_id);
 
-            // We must update every connection in the routers matrix
-            loop {
-                let neighbours = connections
-                    .get_mut(&current_idx)
-                    .ok_or(ConnectionUpdateError)?;
-                if eri.destination_column != eri.current_column {
-                    // Column first
-                    if eri.start_column > eri.destination_column {
-                        // Going left
-                        add_to_ret(current_idx, Directions::West);
+    //         // We must update every connection in the routers matrix
+    //         loop {
+    //             let neighbours = connections
+    //                 .get_mut(&current_idx)
+    //                 .ok_or(ConnectionUpdateError)?;
+    //             if eri.destination_column != eri.current_column {
+    //                 // Column first
+    //                 if eri.start_column > eri.destination_column {
+    //                     // Going left
+    //                     add_to_ret(current_idx, Directions::West);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            false,
-                            &Neighbours::left_mut,
-                        )?;
-                    } else {
-                        // Going right
-                        add_to_ret(current_idx, Directions::East);
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_column,
+    //                         false,
+    //                         &Neighbours::left_mut,
+    //                     )?;
+    //                 } else {
+    //                     // Going right
+    //                     add_to_ret(current_idx, Directions::East);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            true,
-                            &Neighbours::right_mut,
-                        )?;
-                    }
-                } else if eri.destination_row != eri.current_row {
-                    // Then row
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_column,
+    //                         true,
+    //                         &Neighbours::right_mut,
+    //                     )?;
+    //                 }
+    //             } else if eri.destination_row != eri.current_row {
+    //                 // Then row
 
-                    if eri.start_id > eri.destination_id {
-                        // Going up
-                        add_to_ret(current_idx, Directions::North);
+    //                 if eri.start_id > eri.destination_id {
+    //                     // Going up
+    //                     add_to_ret(current_idx, Directions::North);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            false,
-                            &Neighbours::top_mut,
-                        )?;
-                    } else {
-                        // Going down
-                        add_to_ret(current_idx, Directions::South);
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_row,
+    //                         false,
+    //                         &Neighbours::top_mut,
+    //                     )?;
+    //                 } else {
+    //                     // Going down
+    //                     add_to_ret(current_idx, Directions::South);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            true,
-                            &Neighbours::bottom_mut,
-                        )?;
-                    }
-                } else {
-                    // We reached the destination
-                    break;
-                }
-            }
-        }
+    //                     current_idx = ManycoreSystem::update_connection(
+    //                         neighbours,
+    //                         eri.communication_cost,
+    //                         &mut eri.current_row,
+    //                         true,
+    //                         &Neighbours::bottom_mut,
+    //                     )?;
+    //                 }
+    //             } else {
+    //                 // We reached the destination
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-        Ok(ret)
-    }
+    //     Ok(ret)
+    // }
 
     /// Observed route implementation. Mirrors Channels information.
-    fn observed_route(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
-        self.clear_links();
-        let ManycoreSystem {
-            ref cores,
-            ref mut connections,
-            ..
-        } = *self;
+    // fn observed_route(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    //     self.clear_links();
+    //     let ManycoreSystem {
+    //         ref cores,
+    //         ref mut connections,
+    //         ..
+    //     } = *self;
 
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
+    //     let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
 
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
-        };
+    //     let mut add_to_ret = |i: usize, direction: Directions| {
+    //         ret.entry(i).or_insert(Vec::new()).push(direction);
+    //     };
 
-        for i in 0..cores.list().len() {
-            if let Some(channels) = cores.list()[i].channels() {
-                for (direction, channel) in channels.channel() {
-                    let packets = *channel.packets_transmitted();
-                    if packets != 0 {
-                        match direction {
-                            Directions::North => {
-                                add_to_ret(i, Directions::North);
+    //     for i in 0..cores.list().len() {
+    //         if let Some(channels) = cores.list()[i].channels() {
+    //             for (direction, channel) in channels.channel() {
+    //                 let packets = *channel.packets_transmitted();
+    //                 if packets != 0 {
+    //                     match direction {
+    //                         Directions::North => {
+    //                             add_to_ret(i, Directions::North);
 
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::top_mut,
-                                )?;
-                            }
-                            Directions::East => {
-                                add_to_ret(i, Directions::East);
+    //                             let _ = ManycoreSystem::update_neighbour(
+    //                                 connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
+    //                                 packets as u8,
+    //                                 &Neighbours::top_mut,
+    //                             )?;
+    //                         }
+    //                         Directions::East => {
+    //                             add_to_ret(i, Directions::East);
 
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::right_mut,
-                                )?;
-                            }
-                            Directions::South => {
-                                add_to_ret(i, Directions::South);
+    //                             let _ = ManycoreSystem::update_neighbour(
+    //                                 connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
+    //                                 packets as u8,
+    //                                 &Neighbours::right_mut,
+    //                             )?;
+    //                         }
+    //                         Directions::South => {
+    //                             add_to_ret(i, Directions::South);
 
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::bottom_mut,
-                                )?;
-                            }
-                            Directions::West => {
-                                add_to_ret(i, Directions::West);
+    //                             let _ = ManycoreSystem::update_neighbour(
+    //                                 connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
+    //                                 packets as u8,
+    //                                 &Neighbours::bottom_mut,
+    //                             )?;
+    //                         }
+    //                         Directions::West => {
+    //                             add_to_ret(i, Directions::West);
 
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::left_mut,
-                                )?;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    //                             let _ = ManycoreSystem::update_neighbour(
+    //                                 connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
+    //                                 packets as u8,
+    //                                 &Neighbours::left_mut,
+    //                             )?;
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        Ok(ret)
-    }
+    //     Ok(ret)
+    // }
 
     /// Clears all links loads.
     fn clear_links(&mut self) {
         // Zero out all links costs
-        (&mut self.connections)
+        (self.cores_mut().core_map_mut().map_mut())
             .iter_mut()
-            .for_each(|(_, neighbours)| neighbours.clear_link_costs());
+            .for_each(|(_, core)| core.channels_mut().clear_load());
     }
 
     /// Performs routing according to the requested algorithm.
@@ -479,10 +479,11 @@ impl ManycoreSystem {
     ) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
         self.clear_links();
 
-        match algorithm {
-            RoutingAlgorithms::ColumnFirst => self.column_first(),
-            RoutingAlgorithms::RowFirst => self.row_first(),
-            RoutingAlgorithms::Observed => self.observed_route(),
-        }
+        // match algorithm {
+        //     RoutingAlgorithms::ColumnFirst => self.column_first(),
+        //     RoutingAlgorithms::RowFirst => self.row_first(),
+        //     RoutingAlgorithms::Observed => self.observed_route(),
+        // }
+        Err(ConnectionUpdateError)
     }
 }

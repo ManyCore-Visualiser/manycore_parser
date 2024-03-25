@@ -38,6 +38,10 @@ pub struct Channel {
     #[serde(rename = "@bandwidth")]
     #[getset(get = "pub")]
     bandwidth: u16,
+    /// Calculated load
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    calculated_load: u16,
 }
 
 impl Channel {
@@ -55,6 +59,7 @@ impl Channel {
             packets_transmitted,
             status,
             bandwidth,
+            calculated_load: 0,
         }
     }
 }
@@ -99,5 +104,12 @@ impl Channels {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         serializer.collect_seq(channel.values())
+    }
+
+    /// Clear all calculated loads
+    pub fn clear_load(&mut self) {
+        self.channel.iter_mut().for_each(|(_, c)| {
+            c.calculated_load = 0;
+        })
     }
 }

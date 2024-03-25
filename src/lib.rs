@@ -44,9 +44,9 @@ pub enum AttributeType {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
     /// Core parameters. The key is the parameter name, value is parameter type.
-    core: HashMap<String, AttributeType>,
+    core: BTreeMap<String, AttributeType>,
     /// Router parameters. The key is the parameter name, value is parameter type.
-    router: HashMap<String, AttributeType>,
+    router: BTreeMap<String, AttributeType>,
     /// A list of supported routing algorithms.
     algorithms: Vec<RoutingAlgorithms>,
     /// Denotes the presence of an observed routing outcome.
@@ -89,14 +89,6 @@ pub struct ManycoreSystem {
     #[serde(skip_serializing_if = "Borders::should_skip_serialize")]
     borders: Borders,
     #[serde(skip)]
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// This is not part of the XML and is used in the routing logic. It is a map with the core IDs as key and the core (router) possible connections as value.
-    connections: HashMap<usize, Neighbours>,
-    #[serde(skip)]
-    #[getset(get = "pub", set = "pub", get_mut = "pub")]
-    /// This is not part of the XML and is used in the routing logic. It maps a task ID (key) to the corresponding core ID (value, the core upon which the task is allocated to).
-    task_core_map: HashMap<u16, usize>,
-    #[serde(skip)]
     #[getset(get = "pub")]
     /// This is not part of the XML and is used to provided the frontend with a list of attributes that can be requested for rendering.
     configurable_attributes: ConfigurableAttributes,
@@ -133,15 +125,17 @@ impl ManycoreSystem {
 
         let variant_string = group_id.remove(0).to_string();
 
-        let core: &Core = self
-            .cores()
-            .list()
-            .get(group_id.parse::<usize>().map_err(|_| InfoError {
-                reason: "Invalid group_id",
-            })?)
-            .ok_or(InfoError {
-                reason: "Invalid index",
-            })?;
+        // let core: &Core = self
+        //     .cores()
+        //     .list()
+        //     .get(group_id.parse::<usize>().map_err(|_| InfoError {
+        //         reason: "Invalid group_id",
+        //     })?)
+        //     .ok_or(InfoError {
+        //         reason: "Invalid index",
+        //     })?;
+
+        let core = self.cores().core_map().core_by_id(group_id);
 
         // id and allocated_task are not part of the core "other_attributes" field so we shall
         // add them manually.
@@ -177,113 +171,18 @@ impl ManycoreSystem {
         }
     }
 
-    /// Retrieves all available attributes and their type, and inserts them in the given map.
-    fn populate_attribute_map<T: WithXMLAttributes>(
-        item: &T,
-        map: &mut HashMap<String, AttributeType>,
-    ) {
-        // Are there any attributes we can inspect?
-        if let Some(other_attributes) = item.other_attributes() {
-            for (key, value) in other_attributes {
-                // It's worth inspecting the attribute only if missing in the map.
-                if !map.contains_key(key) {
-                    // If parsing the attribute value as a number fails, the attribute must
-                    // be a string.
-                    let attribute_type = match value.parse::<u64>() {
-                        Ok(_) => AttributeType::Number,
-                        Err(_) => AttributeType::Text,
-                    };
-
-                    map.insert(key.clone(), attribute_type);
-                }
-            }
-        }
-    }
-
     /// Deserialises an XML file into a ManycoreSystem struct.
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, Box<dyn std::error::Error>> {
         let file_content = std::fs::read_to_string(path)?;
 
         let mut manycore: ManycoreSystem = quick_xml::de::from_str(&file_content)?;
 
-        // Sort cores by id. This is potentially unnecessary if the file contains,
-        // cores in an ordered manner but that is not a guarantee.
-        manycore
-            .cores_mut()
-            .list_mut()
-            .sort_by(|me, other| me.id().cmp(&other.id()));
-
         // Populate neighbour connections, task -> core map and router IDs
         let usize_columns = usize::from(manycore.columns);
-        let last = manycore.cores.list().len() - 1;
-        let mut task_core_map = HashMap::new();
-        for i in 0..=last {
-            // Neighbour resolving logic START
-            // Here we workout all the possible neighbours a node might
-            // have based on its index. Note that this works only for a
-            // 2D matrix.
-            let mut neighbours = Neighbours::default();
-
-            let right = i + 1;
-            // If i is greater or equal to the number of columns, we are on the
-            // second row (i is 0 indexed).
-            let top = i >= usize_columns;
-            let bottom = i + usize_columns;
-
-            // Right
-            if right % usize_columns != 0 {
-                neighbours.set_right(Neighbour::new(Some(right)));
-            }
-
-            // Left
-            if i % usize_columns != 0 {
-                neighbours.set_left(Neighbour::new(Some(i - 1)));
-            }
-
-            // Top
-            if top {
-                neighbours.set_top(Neighbour::new(Some(i - usize_columns)));
-            }
-
-            // Bottom
-            // bottom is defined as i + usize_columns. Effectively, we are checking
-            // if a row exists past the current i.
-            if bottom <= last {
-                neighbours.set_bottom(Neighbour::new(Some(bottom)));
-            }
-
-            manycore.connections_mut().insert(i, neighbours);
-
-            // Neighbour resolving logic END
-
-            // task -> core map
-            if let Some(task_id) = manycore.cores().list()[i].allocated_task().as_ref() {
-                task_core_map.insert(*task_id, i);
-            }
-
-            // router ID
-            manycore.cores_mut().list_mut()[i]
-                .router_mut()
-                .set_id(i as u8);
-        }
-
-        // Store map
-        manycore.task_core_map = task_core_map;
-
-        // Workout configurable attributes
-        let mut core_attributes: HashMap<String, AttributeType> = HashMap::new();
-        // Manually insert core attributes that are not part of the "other_attributes" map.
-        core_attributes.insert("@id".to_string(), AttributeType::Text);
-        core_attributes.insert("@coordinates".to_string(), AttributeType::Text);
-        let mut router_attributes: HashMap<String, AttributeType> = HashMap::new();
-        for core in manycore.cores.list().iter() {
-            Self::populate_attribute_map(core, &mut core_attributes);
-            Self::populate_attribute_map(core.router(), &mut router_attributes);
-        }
 
         manycore.configurable_attributes = ConfigurableAttributes {
-            core: core_attributes,
-            router: router_attributes,
+            core: manycore.cores.core_map().core_attributes().clone(),
+            router: manycore.cores.core_map().router_attributes().clone(),
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
             observed_algorithm: manycore.routing_algo.clone(),
             sinks_sources: !manycore.borders.should_skip_serialize(),
