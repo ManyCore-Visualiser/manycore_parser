@@ -3,70 +3,158 @@
 <ManycoreSystem
     xmlns="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/a13c07cb6052fb16dea4d1b311a0bb0db48519b2/manycore_schema.xsd"
+    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/057205e76461d12f33c7a54b27d5b2c99d57d9a8/manycore_schema.xsd"
     rows="3"
     columns="3"
-    routing_algo="RowFirst"
+    routingAlgo="RowFirst"
 >
-    <Source coreID="1" direction="North" />
-    <Sink coreID="5" direction="East" />
 
     <TaskGraph>
-        <Task id="0" computationCost="40" />
-        <Task id="1" computationCost="80" />
-        <Task id="2" computationCost="60" />
-        <Task id="3" computationCost="40" />
-        <Edge from="0" to="1" communicationCost="3" />
-        <Edge from="0" to="2" communicationCost="2" />
-        <Edge from="1" to="3" communicationCost="3" />
-        <Edge from="2" to="3" communicationCost="1" />
+        <Task id="2" computationCost="40" />
+        <Task id="3" computationCost="80" />
+        <Task id="4" computationCost="60" />
+        <Edge from="0" to="2" communicationCost="30" />
+        <Edge from="1" to="2" communicationCost="20" />
+        <Edge from="2" to="3" communicationCost="50" />
+        <Edge from="3" to="4" communicationCost="100" />
+        <Edge from="3" to="5" communicationCost="50" />
+        <Edge from="4" to="5" communicationCost="30" />
     </TaskGraph>
 
     <Cores>
-        <Core id="0" age="238" status="High" temperature="45">
+        <Core id="0" age="238" status="High" actualFrequency="Low" temperature="45">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packets_transmitted="0" status="Normal"
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packets_transmitted="0" status="Normal"
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packets_transmitted="0" status="Normal"
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packets_transmitted="1" status="Normal"
-                    packet_index="0" bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
             </Channels>
         </Core>
 
-        <Core id="1" age="394" status="High" temperature="30" allocated_task="3">
+        <Core id="1" age="394" status="High" actualFrequency="High" temperature="30"
+            allocatedTask="3">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="2" age="157" status="High" temperature="30">
+        <Core id="2" age="157" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="3" age="225" status="High" temperature="30">
+        <Core id="3" age="225" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="4" age="478" status="High" temperature="30" allocated_task="1">
+        <Core id="4" age="478" status="High" actualFrequency="High" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="5" age="105" status="High" temperature="30">
+        <Core id="5" age="105" status="High" actualFrequency="Low" temperature="30"
+            allocatedTask="4">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="6" age="18" status="High" temperature="30" allocated_task="0">
+        <Core id="6" age="18" status="High" actualFrequency="High" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="7" age="15" status="High" temperature="30" allocated_task="2">
+        <Core id="7" age="15" status="High" actualFrequency="Mid" temperature="30"
+            allocatedTask="2">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
 
-        <Core id="8" age="10" status="High" temperature="30">
+        <Core id="8" age="10" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
+            <Channels>
+                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                    bandwidth="400" />
+                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
+                    packetIndex="0" bandwidth="400" />
+            </Channels>
         </Core>
     </Cores>
+
+    <Borders>
+        <Source coreID="1" direction="North" taskid="0" />
+        <Source coreID="0" direction="West" taskid="1" />
+        <Sink coreID="6" direction="East" taskid="5" />
+    </Borders>
 </ManycoreSystem>

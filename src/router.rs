@@ -16,7 +16,7 @@ pub struct Router {
     #[serde(
         flatten,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "utils::deserialize_attrs"
+        deserialize_with = "utils::attrs::deserialize_attrs"
     )]
     other_attributes: Option<BTreeMap<String, String>>,
 }

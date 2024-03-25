@@ -15,7 +15,7 @@ pub struct Core {
     #[serde(rename = "Router")]
     router: Router,
     /// The task allocated to the core, if any.
-    #[serde(rename = "@allocated_task", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@allocatedTask", skip_serializing_if = "Option::is_none")]
     allocated_task: Option<u16>,
     /// The communication channels associated with this core.
     #[serde(
@@ -27,7 +27,7 @@ pub struct Core {
     #[serde(
         flatten,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "utils::deserialize_attrs"
+        deserialize_with = "utils::attrs::deserialize_attrs"
     )]
     #[getset(skip)]
     other_attributes: Option<BTreeMap<String, String>>,

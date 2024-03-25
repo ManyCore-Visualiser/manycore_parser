@@ -28,12 +28,9 @@ pub struct Channel {
     #[serde(rename = "@age")]
     age: u8,
     /// Number of packets transmitted over the channel.
-    #[serde(rename = "@packets_transmitted")]
+    #[serde(rename = "@packetsTransmitted")]
     #[getset(get = "pub")]
     packets_transmitted: u16,
-    /// Index of current packet on the channel.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "@packet_index")]
-    packet_index: Option<u8>,
     /// The channel's status.
     #[serde(rename = "@status")]
     status: ChannelStatus,
@@ -49,7 +46,6 @@ impl Channel {
         direction: Directions,
         age: u8,
         packets_transmitted: u16,
-        packet_index: Option<u8>,
         status: ChannelStatus,
         bandwidth: u16,
     ) -> Self {
@@ -57,7 +53,6 @@ impl Channel {
             direction,
             age,
             packets_transmitted,
-            packet_index,
             status,
             bandwidth,
         }

@@ -1,11 +1,12 @@
 //! A parser for Manycore System XML configuration files
 
+mod borders;
 mod channels;
 mod cores;
 mod graph;
 mod router;
 mod routing;
-mod sink_source;
+mod tests;
 mod utils;
 
 use std::collections::BTreeMap;
@@ -13,12 +14,12 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 
+pub use crate::borders::*;
 pub use crate::channels::*;
 pub use crate::cores::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
-pub use crate::sink_source::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
@@ -74,34 +75,19 @@ pub struct ManycoreSystem {
     #[getset(get = "pub")]
     /// Columns in the cores matrix.
     columns: u8,
-    #[serde(rename = "@routing_algo", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@routingAlgo", skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub")]
     /// Algorithm used in the observed routing (Channels data), if any.
     routing_algo: Option<String>,
-    /// Sources (edge routers).
-    #[serde(
-        rename = "Source",
-        skip_serializing_if = "BTreeMap::is_empty",
-        serialize_with = "Source::serialize_btreemap_vector",
-        deserialize_with = "Source::deserialize_btreemap_vector"
-    )]
-    #[getset(get = "pub")]
-    sources: BTreeMap<usize, Source>,
-    /// Sinks (edge routers).
-    #[serde(
-        rename = "Sink",
-        skip_serializing_if = "BTreeMap::is_empty",
-        serialize_with = "Sink::serialize_btreemap_vector",
-        deserialize_with = "Sink::deserialize_btreemap_vector"
-    )]
-    #[getset(get = "pub")]
-    sinks: BTreeMap<usize, Sink>,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// The provided task graph.
     task_graph: TaskGraph,
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// The system's cores.
     cores: Cores,
+    /// Borders (edge routers).
+    #[serde(skip_serializing_if = "Borders::should_skip_serialize")]
+    borders: Borders,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// This is not part of the XML and is used in the routing logic. It is a map with the core IDs as key and the core (router) possible connections as value.
@@ -300,306 +286,9 @@ impl ManycoreSystem {
             router: router_attributes,
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
             observed_algorithm: manycore.routing_algo.clone(),
-            sinks_sources: !manycore.sinks.is_empty() || !manycore.sources.is_empty(),
+            sinks_sources: !manycore.borders.should_skip_serialize(),
         };
 
         Ok(manycore)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{
-        collections::{BTreeMap, HashMap},
-        fs::read_to_string,
-    };
-
-    use crate::{
-        sink_source::{Sink, SinkSourceDirection, Source},
-        AttributeType, Channel, ChannelStatus, Channels, ConfigurableAttributes, Core, Cores,
-        Directions, Edge, ManycoreSystem, Neighbours, Router, Task, TaskGraph,
-        SUPPORTED_ALGORITHMS,
-    };
-
-    #[test]
-    fn can_parse() {
-        let expected_tasks = vec![
-            Task::new(0, 40),
-            Task::new(1, 80),
-            Task::new(2, 60),
-            Task::new(3, 40),
-        ];
-
-        let expected_edges = vec![
-            Edge::new(0, 1, 3),
-            Edge::new(0, 2, 2),
-            Edge::new(1, 3, 3),
-            Edge::new(2, 3, 1),
-        ];
-
-        let expected_graph = TaskGraph::new(expected_tasks, expected_edges);
-
-        let expected_cores = vec![
-            Core::new(
-                0,
-                Router::new(
-                    0,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                None,
-                Some(Channels::new(BTreeMap::from([
-                    (
-                        Directions::North,
-                        Channel::new(Directions::North, 30, 0, None, ChannelStatus::Normal, 400),
-                    ),
-                    (
-                        Directions::South,
-                        Channel::new(
-                            Directions::South,
-                            30,
-                            1,
-                            Some(0),
-                            ChannelStatus::Normal,
-                            400,
-                        ),
-                    ),
-                    (
-                        Directions::East,
-                        Channel::new(Directions::East, 30, 0, None, ChannelStatus::Normal, 400),
-                    ),
-                    (
-                        Directions::West,
-                        Channel::new(Directions::West, 30, 0, None, ChannelStatus::Normal, 400),
-                    ),
-                ]))),
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "238".to_string()),
-                    ("@temperature".to_string(), "45".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                1,
-                Router::new(
-                    1,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                Some(3),
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "394".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                2,
-                Router::new(
-                    2,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                None,
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "157".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                3,
-                Router::new(
-                    3,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                None,
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "225".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                4,
-                Router::new(
-                    4,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                Some(1),
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "478".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                5,
-                Router::new(
-                    5,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                None,
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "105".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                6,
-                Router::new(
-                    6,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                Some(0),
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "18".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                7,
-                Router::new(
-                    7,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                Some(2),
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "15".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-            Core::new(
-                8,
-                Router::new(
-                    8,
-                    Some(BTreeMap::from([
-                        ("@age".to_string(), "30".to_string()),
-                        ("@temperature".to_string(), "30".to_string()),
-                        ("@status".to_string(), "Normal".to_string()),
-                    ])),
-                ),
-                None,
-                None,
-                Some(BTreeMap::from([
-                    ("@age".to_string(), "10".to_string()),
-                    ("@temperature".to_string(), "30".to_string()),
-                    ("@status".to_string(), "High".to_string()),
-                ])),
-            ),
-        ];
-
-        let expected_connections: HashMap<usize, Neighbours> = HashMap::from([
-            (0, Neighbours::new(None, Some(1), Some(3), None)),
-            (1, Neighbours::new(None, Some(2), Some(4), Some(0))),
-            (2, Neighbours::new(None, None, Some(5), Some(1))),
-            (3, Neighbours::new(Some(0), Some(4), Some(6), None)),
-            (4, Neighbours::new(Some(1), Some(5), Some(7), Some(3))),
-            (5, Neighbours::new(Some(2), None, Some(8), Some(4))),
-            (6, Neighbours::new(Some(3), Some(7), None, None)),
-            (7, Neighbours::new(Some(4), Some(8), None, Some(6))),
-            (8, Neighbours::new(Some(5), None, None, Some(7))),
-        ]);
-
-        let expected_configurable_attributes = ConfigurableAttributes {
-            core: HashMap::from([
-                ("@id".to_string(), AttributeType::Text),
-                ("@coordinates".to_string(), AttributeType::Text),
-                ("@age".to_string(), AttributeType::Number),
-                ("@temperature".to_string(), AttributeType::Number),
-                ("@status".to_string(), AttributeType::Text),
-            ]),
-            router: HashMap::from([
-                ("@age".to_string(), AttributeType::Number),
-                ("@temperature".to_string(), AttributeType::Number),
-                ("@status".to_string(), AttributeType::Text),
-            ]),
-            algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
-            observed_algorithm: Some(String::from("RowFirst")),
-            sinks_sources: true,
-        };
-
-        let expected_task_core_map = HashMap::from([
-            (0u16, 6usize),
-            (1u16, 4usize),
-            (2u16, 7usize),
-            (3u16, 1usize),
-        ]);
-
-        let expected_manycore = ManycoreSystem {
-            xmlns: String::from(
-                "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
-            ),
-            xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
-            xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/a13c07cb6052fb16dea4d1b311a0bb0db48519b2/manycore_schema.xsd"),
-            columns: 3,
-            rows: 3,
-            routing_algo: Some(String::from("RowFirst")),
-            // sources: Some(Vec::from([Source::new(1, SinkSourceDirection::North)])),
-            sources: BTreeMap::from([(1, Source::new(1, SinkSourceDirection::North))]),
-            sinks: BTreeMap::from([(5, Sink::new(5, SinkSourceDirection::East))]),
-            cores: Cores::new(expected_cores),
-            task_graph: expected_graph,
-            connections: expected_connections,
-            task_core_map: expected_task_core_map,
-            configurable_attributes: expected_configurable_attributes
-        };
-
-        let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
-            .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
-
-        assert_eq!(manycore, expected_manycore)
-    }
-
-    #[test]
-    fn can_serialize() {
-        let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
-            .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
-
-        let res = quick_xml::se::to_string(&manycore).expect("Could not serialize ManyCore");
-
-        let expected = read_to_string("tests/serialized.xml")
-            .expect("Could not read input test file \"tests/serialized.xml\"");
-
-        assert_eq!(res, expected)
     }
 }
