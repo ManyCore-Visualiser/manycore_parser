@@ -188,7 +188,7 @@ fn can_parse() {
     ]);
 
     let expected_configurable_attributes = ConfigurableAttributes {
-        core: HashMap::from([
+        core: BTreeMap::from([
             ("@id".to_string(), AttributeType::Text),
             ("@coordinates".to_string(), AttributeType::Text),
             ("@age".to_string(), AttributeType::Number),
@@ -196,7 +196,7 @@ fn can_parse() {
             ("@status".to_string(), AttributeType::Text),
             ("@actualFrequency".to_string(), AttributeType::Text),
         ]),
-        router: HashMap::from([
+        router: BTreeMap::from([
             ("@age".to_string(), AttributeType::Number),
             ("@temperature".to_string(), AttributeType::Number),
             ("@status".to_string(), AttributeType::Text),

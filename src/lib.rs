@@ -44,9 +44,9 @@ pub enum AttributeType {
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
     /// Core parameters. The key is the parameter name, value is parameter type.
-    core: HashMap<String, AttributeType>,
+    core: BTreeMap<String, AttributeType>,
     /// Router parameters. The key is the parameter name, value is parameter type.
-    router: HashMap<String, AttributeType>,
+    router: BTreeMap<String, AttributeType>,
     /// A list of supported routing algorithms.
     algorithms: Vec<RoutingAlgorithms>,
     /// Denotes the presence of an observed routing outcome.
@@ -180,7 +180,7 @@ impl ManycoreSystem {
     /// Retrieves all available attributes and their type, and inserts them in the given map.
     fn populate_attribute_map<T: WithXMLAttributes>(
         item: &T,
-        map: &mut HashMap<String, AttributeType>,
+        map: &mut BTreeMap<String, AttributeType>,
     ) {
         // Are there any attributes we can inspect?
         if let Some(other_attributes) = item.other_attributes() {
@@ -271,11 +271,11 @@ impl ManycoreSystem {
         manycore.task_core_map = task_core_map;
 
         // Workout configurable attributes
-        let mut core_attributes: HashMap<String, AttributeType> = HashMap::new();
+        let mut core_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
         // Manually insert core attributes that are not part of the "other_attributes" map.
         core_attributes.insert("@id".to_string(), AttributeType::Text);
         core_attributes.insert("@coordinates".to_string(), AttributeType::Text);
-        let mut router_attributes: HashMap<String, AttributeType> = HashMap::new();
+        let mut router_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
         for core in manycore.cores.list().iter() {
             Self::populate_attribute_map(core, &mut core_attributes);
             Self::populate_attribute_map(core.router(), &mut router_attributes);
