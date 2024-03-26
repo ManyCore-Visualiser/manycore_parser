@@ -20,6 +20,7 @@ pub use crate::cores::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
+pub use crate::utils::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +88,7 @@ pub struct ManycoreSystem {
     cores: Cores,
     /// Borders (edge routers).
     #[serde(skip_serializing_if = "Borders::should_skip_serialize")]
+    #[getset(get = "pub")]
     borders: Borders,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
