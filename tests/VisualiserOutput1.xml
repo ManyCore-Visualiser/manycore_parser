@@ -155,6 +155,6 @@
     <Borders>
         <Source coreID="1" direction="North" taskid="0" />
         <Source coreID="0" direction="West" taskid="1" />
-        <Sink coreID="6" direction="East" taskid="5" />
+        <Sink coreID="6" direction="West" taskid="5" />
     </Borders>
 </ManycoreSystem>

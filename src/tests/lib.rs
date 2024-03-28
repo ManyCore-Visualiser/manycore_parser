@@ -8,8 +8,7 @@ use std::{
 use crate::{
     sink::Sink, source::Source, utils::btree::BTreeVectorKeys, AttributeType, Borders, Channel,
     ChannelStatus, Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
-    Neighbours, Router, SinkSourceDirection, Task, TaskGraph, WithXMLAttributes,
-    SUPPORTED_ALGORITHMS,
+    Router, SinkSourceDirection, Task, TaskGraph, WithXMLAttributes, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -69,7 +68,7 @@ fn can_parse() {
             0,
             expected_router.clone(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "238".to_string()),
                 ("@temperature".to_string(), "45".to_string()),
@@ -81,7 +80,7 @@ fn can_parse() {
             1,
             expected_router.clone_increment(),
             Some(3),
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "394".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -93,7 +92,7 @@ fn can_parse() {
             2,
             expected_router.clone_increment(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "157".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -105,7 +104,7 @@ fn can_parse() {
             3,
             expected_router.clone_increment(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "225".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -117,7 +116,7 @@ fn can_parse() {
             4,
             expected_router.clone_increment(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "478".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -129,7 +128,7 @@ fn can_parse() {
             5,
             expected_router.clone_increment(),
             Some(4),
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "105".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -141,7 +140,7 @@ fn can_parse() {
             6,
             expected_router.clone_increment(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "18".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -153,7 +152,7 @@ fn can_parse() {
             7,
             expected_router.clone_increment(),
             Some(2),
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "15".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -165,7 +164,7 @@ fn can_parse() {
             8,
             expected_router.clone_increment(),
             None,
-            Some(expected_channels.clone()),
+            expected_channels.clone(),
             Some(BTreeMap::from([
                 ("@age".to_string(), "10".to_string()),
                 ("@temperature".to_string(), "30".to_string()),
@@ -174,18 +173,6 @@ fn can_parse() {
             ])),
         ),
     ];
-
-    let expected_connections: HashMap<usize, Neighbours> = HashMap::from([
-        (0, Neighbours::new(None, Some(1), Some(3), None)),
-        (1, Neighbours::new(None, Some(2), Some(4), Some(0))),
-        (2, Neighbours::new(None, None, Some(5), Some(1))),
-        (3, Neighbours::new(Some(0), Some(4), Some(6), None)),
-        (4, Neighbours::new(Some(1), Some(5), Some(7), Some(3))),
-        (5, Neighbours::new(Some(2), None, Some(8), Some(4))),
-        (6, Neighbours::new(Some(3), Some(7), None, None)),
-        (7, Neighbours::new(Some(4), Some(8), None, Some(6))),
-        (8, Neighbours::new(Some(5), None, None, Some(7))),
-    ]);
 
     let expected_configurable_attributes = ConfigurableAttributes {
         core: BTreeMap::from([
@@ -209,16 +196,16 @@ fn can_parse() {
     let expected_task_core_map = HashMap::from([(3u16, 1usize), (2u16, 7usize), (4u16, 5usize)]);
 
     let expected_sinks = BTreeMap::from([(
-        BTreeVectorKeys::usize(6),
-        Sink::new(6, SinkSourceDirection::East, 5),
+        BTreeVectorKeys::u16(5),
+        Sink::new(6, SinkSourceDirection::West, 5),
     )]);
     let expected_sources = BTreeMap::from([
         (
-            BTreeVectorKeys::usize(1),
+            BTreeVectorKeys::u16(0),
             Source::new(1, SinkSourceDirection::North, 0),
         ),
         (
-            BTreeVectorKeys::usize(0),
+            BTreeVectorKeys::u16(1),
             Source::new(0, SinkSourceDirection::West, 1),
         ),
     ]);
@@ -235,7 +222,6 @@ fn can_parse() {
         borders: Borders::new(expected_sinks, expected_sources),
         cores: Cores::new(expected_cores),
         task_graph: expected_graph,
-        connections: expected_connections,
         task_core_map: expected_task_core_map,
         configurable_attributes: expected_configurable_attributes
     };

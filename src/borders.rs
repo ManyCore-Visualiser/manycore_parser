@@ -4,6 +4,7 @@ use getset::Getters;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
+use crate::Directions;
 
 use self::sink::Sink;
 use self::source::Source;
@@ -49,5 +50,16 @@ impl Borders {
         sources: BTreeMap<BTreeVectorKeys, Source>,
     ) -> Self {
         Self { sinks, sources }
+    }
+}
+
+impl From<&SinkSourceDirection> for Directions {
+    fn from(value: &SinkSourceDirection) -> Self {
+        match value {
+            SinkSourceDirection::North => Directions::North,
+            SinkSourceDirection::South => Directions::South,
+            SinkSourceDirection::West => Directions::West,
+            SinkSourceDirection::East => Directions::East,
+        }
     }
 }

@@ -6,6 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[allow(non_camel_case_types)]
 pub enum BTreeVectorKeys {
     usize(usize),
+    u16(u16),
 }
 
 pub trait BTreeVector: Clone {
@@ -34,8 +35,11 @@ pub trait BTreeVector: Clone {
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
-        T: Serialize,
+        T: Serialize + Ord,
     {
-        serializer.collect_seq(map.values())
+        let mut vec = map.values().collect::<Vec<&T>>();
+        vec.sort();
+
+        serializer.collect_seq(vec)
     }
 }

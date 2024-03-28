@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use getset::{Getters, MutGetters};
 use serde::{Deserialize, Serialize};
 
@@ -16,12 +14,12 @@ pub struct Edge {
     to: u16,
     /// Edge cost.
     #[serde(rename = "@communicationCost")]
-    communication_cost: u8,
+    communication_cost: u16,
 }
 
 impl Edge {
     /// Instantiates a new edge.
-    pub fn new(from: u16, to: u16, communication_cost: u8) -> Self {
+    pub fn new(from: u16, to: u16, communication_cost: u16) -> Self {
         Self {
             from,
             to,

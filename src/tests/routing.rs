@@ -1,72 +1,63 @@
-// #[cfg(test)]
-// use crate::{ManycoreSystem, Neighbour, Neighbours, RoutingAlgorithms};
+#[cfg(test)]
+use crate::{
+    get_core, routing_error, Directions, ManycoreError, ManycoreSystem, RoutingAlgorithms,
+};
 
-// #[cfg(test)]
-// fn get_neighbour_by_id<'a>(
-//     manycore: &'a ManycoreSystem,
-//     id: &usize,
-//     neighbour_selector: &impl Fn(&Neighbours) -> &Option<Neighbour>,
-//     // Impl instead of dyn because there are only 4 variants of the function
-//     // so it's okay for the compiler to generate the 4 signatures.
-// ) -> &'a Neighbour {
-//     &neighbour_selector(
-//         &manycore
-//             .connections()
-//             .get(id)
-//             .expect(&format!("Could not get connections for ID {}", *id)),
-//     )
-//     .as_ref()
-//     .expect(&format!("Could not get wanted neighbour for ID {}", id))
-// }
+#[cfg(test)]
+fn get_load(
+    manycore: &mut ManycoreSystem,
+    id: usize,
+    direction: Directions,
+) -> Result<u16, ManycoreError> {
+    Ok(*get_core(manycore.cores_mut(), id)?
+        .channels()
+        .channel()
+        .get(&direction)
+        .ok_or(routing_error(format!(
+            "Core {id} has no {direction} channel."
+        )))?
+        .current_load())
+}
 
-// #[test]
-// fn row_first_is_correct() {
-//     let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
-//         .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
+#[test]
+fn row_first_is_correct() {
+    let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
+        .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
 
-//     manycore.route(&RoutingAlgorithms::RowFirst).unwrap();
+    manycore.route(&RoutingAlgorithms::RowFirst).unwrap();
 
-//     // Do the routing by hand to verify these, no other way really
-//     assert_eq!(
-//         3,
-//         *get_neighbour_by_id(&manycore, &6, &Neighbours::top).link_cost()
-//     );
-//     assert_eq!(
-//         3,
-//         *get_neighbour_by_id(&manycore, &3, &Neighbours::right).link_cost()
-//     );
-//     assert_eq!(
-//         2,
-//         *get_neighbour_by_id(&manycore, &6, &Neighbours::right).link_cost()
-//     );
-//     assert_eq!(
-//         4,
-//         *get_neighbour_by_id(&manycore, &4, &Neighbours::top).link_cost()
-//     );
-//     assert_eq!(
-//         1,
-//         *get_neighbour_by_id(&manycore, &7, &Neighbours::top).link_cost()
-//     );
-// }
+    // Do the routing by hand to verify these, no other way really
+    assert_eq!(20, get_load(&mut manycore, 0, Directions::South).unwrap());
+    assert_eq!(20, get_load(&mut manycore, 3, Directions::South).unwrap());
+    assert_eq!(180, get_load(&mut manycore, 1, Directions::South).unwrap());
+    assert_eq!(80, get_load(&mut manycore, 4, Directions::South).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 4, Directions::North).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 7, Directions::North).unwrap());
+    assert_eq!(100, get_load(&mut manycore, 4, Directions::East).unwrap());
+    assert_eq!(30, get_load(&mut manycore, 8, Directions::West).unwrap());
+    assert_eq!(80, get_load(&mut manycore, 7, Directions::West).unwrap());
+    assert_eq!(80, get_load(&mut manycore, 6, Directions::West).unwrap());
+    assert_eq!(20, get_load(&mut manycore, 6, Directions::East).unwrap());
+}
 
-// #[test]
-// fn column_first_is_correct() {
-//     let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
-//         .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
+#[test]
+fn column_first_is_correct() {
+    let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
+        .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
 
-//     manycore.route(&RoutingAlgorithms::ColumnFirst).unwrap();
+    manycore.route(&RoutingAlgorithms::ColumnFirst).unwrap();
 
-//     // Do the routing by hand to verify these, no other way really
-//     assert_eq!(
-//         5,
-//         *get_neighbour_by_id(&manycore, &6, &Neighbours::right).link_cost()
-//     );
-//     assert_eq!(
-//         4,
-//         *get_neighbour_by_id(&manycore, &7, &Neighbours::top).link_cost()
-//     );
-//     assert_eq!(
-//         4,
-//         *get_neighbour_by_id(&manycore, &4, &Neighbours::top).link_cost()
-//     );
-// }
+    // Do the routing by hand to verify these, no other way really
+    assert_eq!(20, get_load(&mut manycore, 0, Directions::East).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 0, Directions::South).unwrap());
+    assert_eq!(100, get_load(&mut manycore, 1, Directions::East).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 1, Directions::South).unwrap());
+    assert_eq!(80, get_load(&mut manycore, 3, Directions::South).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 4, Directions::South).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 1, Directions::West).unwrap());
+    assert_eq!(30, get_load(&mut manycore, 4, Directions::West).unwrap());
+    assert_eq!(30, get_load(&mut manycore, 5, Directions::West).unwrap());
+    assert_eq!(80, get_load(&mut manycore, 6, Directions::West).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 7, Directions::North).unwrap());
+    assert_eq!(50, get_load(&mut manycore, 4, Directions::North).unwrap());
+}

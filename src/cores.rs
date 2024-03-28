@@ -18,11 +18,8 @@ pub struct Core {
     #[serde(rename = "@allocatedTask", skip_serializing_if = "Option::is_none")]
     allocated_task: Option<u16>,
     /// The communication channels associated with this core.
-    #[serde(
-        rename = "Channels",
-        skip_serializing_if = "Core::skip_serializing_channels"
-    )]
-    channels: Option<Channels>,
+    #[serde(rename = "Channels")]
+    channels: Channels,
     /// Any other core attribute present in the XML.
     #[serde(
         flatten,
@@ -39,7 +36,7 @@ impl Core {
         id: u8,
         router: Router,
         allocated_task: Option<u16>,
-        channels: Option<Channels>,
+        channels: Channels,
         other_attributes: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
@@ -49,11 +46,6 @@ impl Core {
             channels,
             other_attributes,
         }
-    }
-
-    /// Helper function to determine whether to serialise channels or not.
-    fn skip_serializing_channels(channels: &Option<Channels>) -> bool {
-        !channels.as_ref().is_some_and(|c| !c.channel().is_empty())
     }
 }
 

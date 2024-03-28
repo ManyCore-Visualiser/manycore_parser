@@ -1,7 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display};
 
 use getset::Getters;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::error::ManycoreError;
 
 /// An enum containing all allowed channel directions.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -10,6 +12,12 @@ pub enum Directions {
     South,
     West,
     East,
+}
+
+impl Display for Directions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// An enum containing all the possible channel states.
@@ -38,6 +46,10 @@ pub struct Channel {
     #[serde(rename = "@bandwidth")]
     #[getset(get = "pub")]
     bandwidth: u16,
+    /// The load on the channel
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    current_load: u16,
 }
 
 impl Channel {
@@ -55,7 +67,12 @@ impl Channel {
             packets_transmitted,
             status,
             bandwidth,
+            current_load: 0,
         }
+    }
+
+    pub fn add_to_cost(&mut self, cost: u16) {
+        self.current_load += cost;
     }
 }
 
@@ -99,5 +116,30 @@ impl Channels {
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         serializer.collect_seq(channel.values())
+    }
+
+    pub fn channel_mut(&mut self) -> &mut BTreeMap<Directions, Channel> {
+        &mut self.channel
+    }
+
+    pub fn clear_loads(&mut self) {
+        self.channel
+            .iter_mut()
+            .for_each(|(_, c)| c.current_load = 0);
+    }
+
+    /// Adds to the channel's load.
+    pub fn add_to_cost(&mut self, cost: u16, direction: Directions) -> Result<(), ManycoreError> {
+        self.channel
+            .get_mut(&direction)
+            .ok_or(ManycoreError::new(
+                crate::error::ManycoreErrorKind::RoutingError(format!(
+                    "Missing {} channels.",
+                    direction
+                )),
+            ))?
+            .current_load += u16::from(cost);
+
+        Ok(())
     }
 }

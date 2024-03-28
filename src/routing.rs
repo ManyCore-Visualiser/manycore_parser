@@ -1,81 +1,11 @@
-use std::{collections::HashMap, error::Error, fmt::Display};
+use std::collections::HashMap;
 
-use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
-use crate::{Cores, Directions, Edge, ManycoreSystem, WithXMLAttributes};
-
-/// A neighbour.
-#[derive(Default, Debug, PartialEq, Clone, Getters)]
-#[getset(get = "pub")]
-pub struct Neighbour {
-    /// The neighbour id.
-    id: usize,
-    /// The load on this channel.
-    link_cost: u8,
-}
-
-impl Neighbour {
-    /// Adds to the channel's load.
-    fn add_to_cost(&mut self, cost: u8) {
-        self.link_cost += cost;
-    }
-
-    /// Instantiates a new neighbour if a neighbour id is given, else returns None.
-    pub fn new(id: Option<usize>) -> Option<Neighbour> {
-        if let Some(id) = id {
-            return Some(Neighbour { id, link_cost: 0 });
-        }
-
-        None
-    }
-}
-
-/// Holds options for each possible neighbour. Is None if there is no connection.
-#[derive(Default, Debug, PartialEq, Getters, MutGetters, Setters, Clone)]
-#[getset(get = "pub", get_mut = "pub", set = "pub")]
-pub struct Neighbours {
-    top: Option<Neighbour>,
-    right: Option<Neighbour>,
-    bottom: Option<Neighbour>,
-    left: Option<Neighbour>,
-}
-
-impl Neighbours {
-    /// Instantiates a new neighbours instance.
-    pub fn new(
-        top: Option<usize>,
-        right: Option<usize>,
-        bottom: Option<usize>,
-        left: Option<usize>,
-    ) -> Self {
-        Self {
-            top: Neighbour::new(top),
-            right: Neighbour::new(right),
-            bottom: Neighbour::new(bottom),
-            left: Neighbour::new(left),
-        }
-    }
-
-    /// Resets all loads on every channel.
-    fn clear_link_costs(&mut self) {
-        if let Some(top) = &mut self.top {
-            top.link_cost = 0;
-        }
-
-        if let Some(right) = &mut self.right {
-            right.link_cost = 0;
-        }
-
-        if let Some(bottom) = &mut self.bottom {
-            bottom.link_cost = 0;
-        }
-
-        if let Some(left) = &mut self.left {
-            left.link_cost = 0;
-        }
-    }
-}
+use crate::{
+    error::ManycoreError, BTreeVectorKeys, Borders, Core, Cores, Directions, Edge, ManycoreSystem,
+    SinkSourceDirection, WithXMLAttributes,
+};
 
 /// An enum storing all supported routing algorithms.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -109,43 +39,105 @@ struct EdgeRoutingInformation {
     /// The destination core row.
     destination_row: u8,
     /// The edge cost.
-    communication_cost: u8,
+    communication_cost: u16,
+    /// The source direction, if any.
+    source_direction: Option<SinkSourceDirection>,
+    /// The sink direction, if any.
+    sink_direction: Option<SinkSourceDirection>,
 }
 
-#[derive(Debug)]
-pub struct ConnectionUpdateError;
+#[derive(Eq, Hash, PartialEq, Clone)]
+pub enum RoutingTarget {
+    Core(usize),
+    Sink(usize),
+    Source(usize),
+}
 
-impl Display for ConnectionUpdateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Could not find required neighbour. Task graph might be misshapen."
-        )
+pub fn routing_error(reason: String) -> ManycoreError {
+    ManycoreError::new(crate::error::ManycoreErrorKind::RoutingError(reason))
+}
+
+fn no_core(i: &usize) -> ManycoreError {
+    routing_error(format!("Could not get a core with ID {}.", i))
+}
+
+pub fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, ManycoreError> {
+    cores.list_mut().get_mut(i).ok_or(no_core(&i))
+}
+
+fn handle_borders(
+    cores: &mut Cores,
+    add_to_ret: &mut impl FnMut(RoutingTarget, Directions),
+    eri: &EdgeRoutingInformation,
+) -> Result<(), ManycoreError> {
+    if let Some(source_direction) = eri.source_direction.as_ref() {
+        let direction = source_direction.into();
+        let start_idx = usize::from(eri.start_id);
+
+        add_to_ret(RoutingTarget::Source(start_idx), direction);
     }
-}
 
-impl Error for ConnectionUpdateError {}
+    if let Some(sink_direction) = eri.sink_direction.as_ref() {
+        let direction = sink_direction.into();
+        let destination_idx = usize::from(eri.destination_id);
+
+        add_to_ret(RoutingTarget::Sink(destination_idx), direction);
+
+        get_core(cores, destination_idx)?
+            .channels_mut()
+            .add_to_cost(eri.communication_cost, direction)?;
+    }
+
+    Ok(())
+}
 
 impl ManycoreSystem {
     /// Returns the core upon which the given task id is mapped.
-    fn task_id_to_core_id<'a>(
-        task_core_map: &'a HashMap<u16, usize>,
-        task_id: &'a u16,
-    ) -> Result<&'a usize, ConnectionUpdateError> {
-        task_core_map.get(task_id).ok_or(ConnectionUpdateError)
+    fn task_id_to_core<'a>(
+        task_core_map: &HashMap<u16, usize>,
+        task_id: u16,
+        borders: &Borders,
+        cores: &'a Cores,
+    ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
+        match task_core_map.get(&task_id) {
+            Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
+            None => {
+                let key = BTreeVectorKeys::u16(task_id);
+                if let Some(sink) = borders.sinks().get(&key) {
+                    let idx = sink.core_id();
+
+                    Ok((
+                        cores.list().get(*idx).ok_or(no_core(idx))?,
+                        Some(sink.direction().clone()),
+                    ))
+                } else if let Some(source) = borders.sources().get(&key) {
+                    let idx = source.core_id();
+
+                    Ok((
+                        cores.list().get(*idx).ok_or(no_core(idx))?,
+                        Some(source.direction().clone()),
+                    ))
+                } else {
+                    Err(routing_error(format!("Malformed TaskGraph: Task {} is not allocated on any core, sink or source.", task_id)))
+                }
+            }
+        }
     }
 
     /// Calculates required routing information for the given task graph edge.
     fn calculate_edge_routing_information(
         cores: &Cores,
+        borders: &Borders,
         task_core_map: &HashMap<u16, usize>,
         edge: &Edge,
         columns: &u8,
         rows: &u8,
-    ) -> Result<EdgeRoutingInformation, ConnectionUpdateError> {
-        let start = &cores.list()[*ManycoreSystem::task_id_to_core_id(task_core_map, edge.from())?];
-        let destination =
-            &cores.list()[*ManycoreSystem::task_id_to_core_id(task_core_map, edge.to())?];
+    ) -> Result<EdgeRoutingInformation, ManycoreError> {
+        let (start, source) =
+            ManycoreSystem::task_id_to_core(task_core_map, *edge.from(), borders, cores)?;
+
+        let (destination, sink) =
+            ManycoreSystem::task_id_to_core(task_core_map, *edge.to(), borders, cores)?;
 
         let start_id = *start.id();
         let destination_id = *destination.id();
@@ -165,130 +157,87 @@ impl ManycoreSystem {
             destination_column,
             destination_row,
             communication_cost: *edge.communication_cost(),
+            source_direction: source,
+            sink_direction: sink,
         })
     }
 
-    /// Updates a neighbour's load.
-    fn update_neighbour<'a>(
-        neighbours: &'a mut Neighbours,
-        cost: u8,
-        neighbour_selector: &impl Fn(&mut Neighbours) -> &mut Option<Neighbour>,
-    ) -> Result<&'a mut Neighbour, ConnectionUpdateError> {
-        let neighbour = neighbour_selector(neighbours)
-            .as_mut()
-            .ok_or(ConnectionUpdateError)?;
-
-        neighbour.add_to_cost(cost);
-
-        Ok(neighbour)
-    }
-
-    /// Updates the current connection and returns the id of the reached neighbour.
-    fn update_connection(
-        neighbours: &mut Neighbours,
-        cost: u8,
-        delta_target: &mut u8,
-        positive_delta: bool,
-        neighbour_selector: &impl Fn(&mut Neighbours) -> &mut Option<Neighbour>,
-    ) -> Result<usize, ConnectionUpdateError> {
-        let neighbour = ManycoreSystem::update_neighbour(neighbours, cost, neighbour_selector)?;
-
-        // For code reusability, this function can mutate row/column index in both directions.
-        if positive_delta {
-            *delta_target += 1;
-        } else {
-            *delta_target -= 1;
-        }
-
-        Ok(neighbour.id)
-    }
-
     /// RowFirst algorithm implementation.
-    fn row_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    fn row_first(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
         let ManycoreSystem {
-            ref cores,
+            ref mut cores,
             ref columns,
             ref rows,
             ref task_graph,
-            ref mut connections,
+            ref borders,
             ref task_core_map,
             ..
         } = *self;
 
         // Return value. Stores non-zero core-edge pairs.
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
-
+        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
         // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
+        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
+            ret.entry(key).or_insert(Vec::new()).push(direction);
         };
 
         // For each edge in the task graph
         for edge in task_graph.edges() {
             let mut eri = ManycoreSystem::calculate_edge_routing_information(
                 cores,
+                borders,
                 task_core_map,
                 edge,
                 columns,
                 rows,
             )?;
 
+            handle_borders(cores, &mut add_to_ret, &eri)?;
+
             let mut current_idx = usize::from(eri.start_id);
+            let mut core;
 
             // We must update every connection in the routers matrix
             loop {
-                let neighbours = connections
-                    .get_mut(&current_idx)
-                    .ok_or(ConnectionUpdateError)?;
+                core = get_core(cores, current_idx)?;
+
+                let ret_key = RoutingTarget::Core(current_idx);
+
+                let channels = core.channels_mut();
+
                 if eri.destination_row != eri.current_row {
                     // Row first
                     if eri.start_id > eri.destination_id {
                         // Going up
-                        add_to_ret(current_idx, Directions::North);
+                        add_to_ret(ret_key, Directions::North);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            false,
-                            &Neighbours::top_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
+                        current_idx -= usize::from(*columns);
+                        eri.current_row -= 1;
                     } else {
                         // Going down
-                        add_to_ret(current_idx, Directions::South);
+                        add_to_ret(ret_key, Directions::South);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            true,
-                            &Neighbours::bottom_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
+                        current_idx += usize::from(*columns);
+                        eri.current_row += 1;
                     }
                 } else if eri.destination_column != eri.current_column {
                     // Then column
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(current_idx, Directions::West);
+                        add_to_ret(ret_key, Directions::West);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            false,
-                            &Neighbours::left_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
+                        current_idx -= 1;
+                        eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(current_idx, Directions::East);
+                        add_to_ret(ret_key, Directions::East);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            true,
-                            &Neighbours::right_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
+                        current_idx += 1;
+                        eri.current_column += 1;
                     }
                 } else {
                     // We reached the destination
@@ -301,92 +250,82 @@ impl ManycoreSystem {
     }
 
     /// ColumnFirst algorithm implementation.
-    fn column_first(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    fn column_first(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
         let ManycoreSystem {
-            ref cores,
+            ref mut cores,
             ref columns,
             ref rows,
             ref task_graph,
-            ref mut connections,
+            ref borders,
             ref task_core_map,
             ..
         } = *self;
 
-        // Return value. Stores non-zero core-edge pairs
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
-
+        // Return value. Stores non-zero core-edge pairs.
+        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
         // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
+        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
+            ret.entry(key).or_insert(Vec::new()).push(direction);
         };
 
         // For each edge in the task graph
         for edge in task_graph.edges() {
             let mut eri = ManycoreSystem::calculate_edge_routing_information(
                 cores,
+                borders,
                 task_core_map,
                 edge,
                 columns,
                 rows,
             )?;
 
+            handle_borders(cores, &mut add_to_ret, &eri)?;
+
             let mut current_idx = usize::from(eri.start_id);
+            let mut core;
 
             // We must update every connection in the routers matrix
             loop {
-                let neighbours = connections
-                    .get_mut(&current_idx)
-                    .ok_or(ConnectionUpdateError)?;
+                core = get_core(cores, current_idx)?;
+
+                let ret_key = RoutingTarget::Core(current_idx);
+
+                let channels = core.channels_mut();
+
                 if eri.destination_column != eri.current_column {
                     // Column first
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(current_idx, Directions::West);
+                        add_to_ret(ret_key, Directions::West);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            false,
-                            &Neighbours::left_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
+                        current_idx -= 1;
+                        eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(current_idx, Directions::East);
+                        add_to_ret(ret_key, Directions::East);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_column,
-                            true,
-                            &Neighbours::right_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
+                        current_idx += 1;
+                        eri.current_column += 1;
                     }
                 } else if eri.destination_row != eri.current_row {
                     // Then row
 
                     if eri.start_id > eri.destination_id {
                         // Going up
-                        add_to_ret(current_idx, Directions::North);
+                        add_to_ret(ret_key, Directions::North);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            false,
-                            &Neighbours::top_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
+                        current_idx -= usize::from(*columns);
+                        eri.current_row -= 1;
                     } else {
                         // Going down
-                        add_to_ret(current_idx, Directions::South);
+                        add_to_ret(ret_key, Directions::South);
 
-                        current_idx = ManycoreSystem::update_connection(
-                            neighbours,
-                            eri.communication_cost,
-                            &mut eri.current_row,
-                            true,
-                            &Neighbours::bottom_mut,
-                        )?;
+                        let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
+                        current_idx += usize::from(*columns);
+                        eri.current_row += 1;
                     }
                 } else {
                     // We reached the destination
@@ -399,64 +338,25 @@ impl ManycoreSystem {
     }
 
     /// Observed route implementation. Mirrors Channels information.
-    fn observed_route(&mut self) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
-        self.clear_links();
-        let ManycoreSystem {
-            ref cores,
-            ref mut connections,
-            ..
-        } = *self;
+    fn observed_route(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
+        let cores = self.cores_mut();
 
-        let mut ret: HashMap<usize, Vec<Directions>> = HashMap::new();
+        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
 
-        let mut add_to_ret = |i: usize, direction: Directions| {
-            ret.entry(i).or_insert(Vec::new()).push(direction);
+        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
+            ret.entry(key).or_insert(Vec::new()).push(direction);
         };
 
+        let mut core;
         for i in 0..cores.list().len() {
-            if let Some(channels) = cores.list()[i].channels() {
-                for (direction, channel) in channels.channel() {
-                    let packets = *channel.packets_transmitted();
-                    if packets != 0 {
-                        match direction {
-                            Directions::North => {
-                                add_to_ret(i, Directions::North);
+            let ret_key = RoutingTarget::Core(i);
+            core = get_core(cores, i)?;
+            for (direction, channel) in core.channels_mut().channel_mut() {
+                let packets = *channel.packets_transmitted();
+                if packets != 0 {
+                    add_to_ret(ret_key.clone(), *direction);
 
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::top_mut,
-                                )?;
-                            }
-                            Directions::East => {
-                                add_to_ret(i, Directions::East);
-
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::right_mut,
-                                )?;
-                            }
-                            Directions::South => {
-                                add_to_ret(i, Directions::South);
-
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::bottom_mut,
-                                )?;
-                            }
-                            Directions::West => {
-                                add_to_ret(i, Directions::West);
-
-                                let _ = ManycoreSystem::update_neighbour(
-                                    connections.get_mut(&i).ok_or(ConnectionUpdateError)?,
-                                    packets as u8,
-                                    &Neighbours::left_mut,
-                                )?;
-                            }
-                        }
-                    }
+                    channel.add_to_cost(packets);
                 }
             }
         }
@@ -467,16 +367,17 @@ impl ManycoreSystem {
     /// Clears all links loads.
     fn clear_links(&mut self) {
         // Zero out all links costs
-        (&mut self.connections)
+        self.cores_mut()
+            .list_mut()
             .iter_mut()
-            .for_each(|(_, neighbours)| neighbours.clear_link_costs());
+            .for_each(|c| c.channels_mut().clear_loads());
     }
 
     /// Performs routing according to the requested algorithm.
     pub fn route(
         &mut self,
         algorithm: &RoutingAlgorithms,
-    ) -> Result<HashMap<usize, Vec<Directions>>, ConnectionUpdateError> {
+    ) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
         self.clear_links();
 
         match algorithm {
