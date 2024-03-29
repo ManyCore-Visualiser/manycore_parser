@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use getset::Getters;
+use getset::{Getters, MutGetters};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
@@ -20,8 +20,8 @@ pub enum SinkSourceDirection {
     West,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Getters)]
-#[getset(get = "pub")]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters)]
+#[getset(get = "pub", get_mut = "pub")]
 pub struct Borders {
     #[serde(
         rename = "Source",

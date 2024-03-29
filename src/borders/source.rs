@@ -1,11 +1,11 @@
-use getset::Getters;
+use getset::{Getters, MutGetters};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
 
 use super::SinkSourceDirection;
 
-#[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone, Eq)]
+#[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone, Eq, MutGetters)]
 #[getset(get = "pub")]
 pub struct Source {
     #[serde(rename = "@coreID")]
@@ -14,6 +14,19 @@ pub struct Source {
     direction: SinkSourceDirection,
     #[serde(rename = "@taskid")]
     task_id: u16,
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    current_load: u16,
+}
+
+impl Source {
+    pub fn add_to_load(&mut self, load: u16) {
+        self.current_load += load;
+    }
+
+    pub fn clear_load(&mut self) {
+        self.current_load = 0;
+    }
 }
 
 impl BTreeVector for Source {
@@ -43,6 +56,7 @@ impl Source {
             core_id,
             direction,
             task_id,
+            current_load: 0,
         }
     }
 }

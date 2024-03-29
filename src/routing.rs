@@ -44,13 +44,15 @@ struct EdgeRoutingInformation {
     source_direction: Option<SinkSourceDirection>,
     /// The sink direction, if any.
     sink_direction: Option<SinkSourceDirection>,
+    /// The source task id
+    from: u16,
 }
 
 #[derive(Eq, Hash, PartialEq, Clone)]
 pub enum RoutingTarget {
     Core(usize),
     Sink(usize),
-    Source(usize),
+    Source(u16),
 }
 
 pub fn routing_error(reason: String) -> ManycoreError {
@@ -59,6 +61,13 @@ pub fn routing_error(reason: String) -> ManycoreError {
 
 fn no_core(i: &usize) -> ManycoreError {
     routing_error(format!("Could not get a core with ID {}.", i))
+}
+
+fn no_task(i: &u16) -> ManycoreError {
+    routing_error(format!(
+        "Malformed TaskGraph: Task {} is not allocated on any core, sink or source.",
+        i
+    ))
 }
 
 pub fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, ManycoreError> {
@@ -72,9 +81,8 @@ fn handle_borders(
 ) -> Result<(), ManycoreError> {
     if let Some(source_direction) = eri.source_direction.as_ref() {
         let direction = source_direction.into();
-        let start_idx = usize::from(eri.start_id);
 
-        add_to_ret(RoutingTarget::Source(start_idx), direction);
+        add_to_ret(RoutingTarget::Source(eri.from), direction);
     }
 
     if let Some(sink_direction) = eri.sink_direction.as_ref() {
@@ -96,7 +104,8 @@ impl ManycoreSystem {
     fn task_id_to_core<'a>(
         task_core_map: &HashMap<u16, usize>,
         task_id: u16,
-        borders: &Borders,
+        communication_cost: u16,
+        borders: &mut Borders,
         cores: &'a Cores,
     ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
         match task_core_map.get(&task_id) {
@@ -110,15 +119,16 @@ impl ManycoreSystem {
                         cores.list().get(*idx).ok_or(no_core(idx))?,
                         Some(sink.direction().clone()),
                     ))
-                } else if let Some(source) = borders.sources().get(&key) {
-                    let idx = source.core_id();
+                } else if let Some(source) = borders.sources_mut().get_mut(&key) {
+                    let idx = *source.core_id();
+                    source.add_to_load(communication_cost);
 
                     Ok((
-                        cores.list().get(*idx).ok_or(no_core(idx))?,
+                        cores.list().get(idx).ok_or(no_core(&idx))?,
                         Some(source.direction().clone()),
                     ))
                 } else {
-                    Err(routing_error(format!("Malformed TaskGraph: Task {} is not allocated on any core, sink or source.", task_id)))
+                    Err(no_task(&task_id))
                 }
             }
         }
@@ -127,17 +137,27 @@ impl ManycoreSystem {
     /// Calculates required routing information for the given task graph edge.
     fn calculate_edge_routing_information(
         cores: &Cores,
-        borders: &Borders,
+        borders: &mut Borders,
         task_core_map: &HashMap<u16, usize>,
         edge: &Edge,
         columns: &u8,
         rows: &u8,
     ) -> Result<EdgeRoutingInformation, ManycoreError> {
-        let (start, source) =
-            ManycoreSystem::task_id_to_core(task_core_map, *edge.from(), borders, cores)?;
+        let (start, source) = ManycoreSystem::task_id_to_core(
+            task_core_map,
+            *edge.from(),
+            *edge.communication_cost(),
+            borders,
+            cores,
+        )?;
 
-        let (destination, sink) =
-            ManycoreSystem::task_id_to_core(task_core_map, *edge.to(), borders, cores)?;
+        let (destination, sink) = ManycoreSystem::task_id_to_core(
+            task_core_map,
+            *edge.to(),
+            *edge.communication_cost(),
+            borders,
+            cores,
+        )?;
 
         let start_id = *start.id();
         let destination_id = *destination.id();
@@ -159,6 +179,7 @@ impl ManycoreSystem {
             communication_cost: *edge.communication_cost(),
             source_direction: source,
             sink_direction: sink,
+            from: *edge.from(),
         })
     }
 
@@ -169,7 +190,7 @@ impl ManycoreSystem {
             ref columns,
             ref rows,
             ref task_graph,
-            ref borders,
+            ref mut borders,
             ref task_core_map,
             ..
         } = *self;
@@ -256,7 +277,7 @@ impl ManycoreSystem {
             ref columns,
             ref rows,
             ref task_graph,
-            ref borders,
+            ref mut borders,
             ref task_core_map,
             ..
         } = *self;
@@ -339,7 +360,12 @@ impl ManycoreSystem {
 
     /// Observed route implementation. Mirrors Channels information.
     fn observed_route(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
-        let cores = self.cores_mut();
+        let ManycoreSystem {
+            ref mut cores,
+            ref task_graph,
+            ref mut borders,
+            ..
+        } = *self;
 
         let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
 
@@ -361,6 +387,14 @@ impl ManycoreSystem {
             }
         }
 
+        for e in task_graph.edges() {
+            let key = BTreeVectorKeys::u16(*e.from());
+
+            if let Some(source) = borders.sources_mut().get_mut(&key) {
+                source.add_to_load(*e.communication_cost());
+            }
+        }
+
         Ok(ret)
     }
 
@@ -371,6 +405,12 @@ impl ManycoreSystem {
             .list_mut()
             .iter_mut()
             .for_each(|c| c.channels_mut().clear_loads());
+        self.borders_mut()
+            .sources_mut()
+            .iter_mut()
+            .for_each(|(_, source)| {
+                source.clear_load();
+            })
     }
 
     /// Performs routing according to the requested algorithm.

@@ -89,7 +89,7 @@ pub struct ManycoreSystem {
     cores: Cores,
     /// Borders (edge routers).
     #[serde(skip_serializing_if = "Borders::should_skip_serialize")]
-    #[getset(get = "pub")]
+    #[getset(get = "pub", get_mut = "pub")]
     borders: Borders,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
