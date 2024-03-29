@@ -3,6 +3,17 @@ use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
 
+pub enum EdgePosition {
+    Top,
+    TopLeft,
+    TopRight,
+    Left,
+    Right,
+    Bottom,
+    BottomLeft,
+    BottomRight,
+}
+
 /// A system's core.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters, Setters, MutGetters)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
@@ -31,6 +42,7 @@ pub struct Core {
 }
 
 impl Core {
+    #[cfg(test)]
     /// Instantiates a new core.
     pub fn new(
         id: u8,
@@ -46,6 +58,30 @@ impl Core {
             channels,
             other_attributes,
         }
+    }
+
+    /// Utility to determmine if a core is on the edge
+    pub fn is_on_edge(&self, columns: u8, rows: u8) -> Option<EdgePosition> {
+        let bl_bound = (rows - 1) * columns;
+        if self.id % columns == 0 {
+            return match self.id {
+                0 => Some(EdgePosition::TopLeft),
+                bl if bl == bl_bound => Some(EdgePosition::BottomLeft),
+                _ => Some(EdgePosition::Left),
+            };
+        } else if (self.id + 1) % columns == 0 {
+            return match self.id {
+                tr if tr == (columns - 1) => Some(EdgePosition::TopRight),
+                br if br == ((rows * columns) - 1) => Some(EdgePosition::BottomRight),
+                _ => Some(EdgePosition::Right),
+            };
+        } else if self.id < columns {
+            return Some(EdgePosition::Top);
+        } else if self.id > bl_bound {
+            return Some(EdgePosition::Bottom);
+        }
+
+        None
     }
 }
 
