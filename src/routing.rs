@@ -48,7 +48,7 @@ struct EdgeRoutingInformation {
     from: u16,
 }
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, Hash, PartialEq, Clone, Debug)]
 pub enum RoutingTarget {
     Core(usize),
     Sink(usize),
