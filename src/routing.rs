@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -184,7 +184,7 @@ impl ManycoreSystem {
     }
 
     /// RowFirst algorithm implementation.
-    fn row_first(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
+    fn row_first(&mut self) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         let ManycoreSystem {
             ref mut cores,
             ref columns,
@@ -196,10 +196,10 @@ impl ManycoreSystem {
         } = *self;
 
         // Return value. Stores non-zero core-edge pairs.
-        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
+        let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
         // This closure adds a key-value pair to the result.
         let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(Vec::new()).push(direction);
+            ret.entry(key).or_insert(HashSet::new()).insert(direction);
         };
 
         // For each edge in the task graph
@@ -271,7 +271,7 @@ impl ManycoreSystem {
     }
 
     /// ColumnFirst algorithm implementation.
-    fn column_first(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
+    fn column_first(&mut self) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         let ManycoreSystem {
             ref mut cores,
             ref columns,
@@ -283,10 +283,10 @@ impl ManycoreSystem {
         } = *self;
 
         // Return value. Stores non-zero core-edge pairs.
-        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
+        let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
         // This closure adds a key-value pair to the result.
         let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(Vec::new()).push(direction);
+            ret.entry(key).or_insert(HashSet::new()).insert(direction);
         };
 
         // For each edge in the task graph
@@ -359,7 +359,7 @@ impl ManycoreSystem {
     }
 
     /// Observed route implementation. Mirrors Channels information.
-    fn observed_route(&mut self) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
+    fn observed_route(&mut self) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         let ManycoreSystem {
             ref mut cores,
             ref task_graph,
@@ -367,10 +367,10 @@ impl ManycoreSystem {
             ..
         } = *self;
 
-        let mut ret: HashMap<RoutingTarget, Vec<Directions>> = HashMap::new();
+        let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
 
         let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(Vec::new()).push(direction);
+            ret.entry(key).or_insert(HashSet::new()).insert(direction);
         };
 
         let mut core;
@@ -417,7 +417,7 @@ impl ManycoreSystem {
     pub fn route(
         &mut self,
         algorithm: &RoutingAlgorithms,
-    ) -> Result<HashMap<RoutingTarget, Vec<Directions>>, ManycoreError> {
+    ) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         self.clear_links();
 
         match algorithm {
