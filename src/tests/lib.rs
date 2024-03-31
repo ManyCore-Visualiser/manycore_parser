@@ -6,9 +6,9 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    sink::Sink, source::Source, utils::btree::BTreeVectorKeys, AttributeType, Borders, Channel,
-    ChannelStatus, Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
-    Router, SinkSourceDirection, Task, TaskGraph, WithXMLAttributes, SUPPORTED_ALGORITHMS,
+    sink::Sink, source::Source, AttributeType, Borders, Channel, ChannelStatus, Channels,
+    ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem, Router,
+    SinkSourceDirection, Task, TaskGraph, WithXMLAttributes, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -195,19 +195,10 @@ fn can_parse() {
 
     let expected_task_core_map = HashMap::from([(3u16, 1usize), (2u16, 7usize), (4u16, 5usize)]);
 
-    let expected_sinks = BTreeMap::from([(
-        BTreeVectorKeys::u16(5),
-        Sink::new(6, SinkSourceDirection::West, 5),
-    )]);
+    let expected_sinks = BTreeMap::from([(5, Sink::new(6, SinkSourceDirection::West, 5))]);
     let expected_sources = BTreeMap::from([
-        (
-            BTreeVectorKeys::u16(0),
-            Source::new(1, SinkSourceDirection::North, 0),
-        ),
-        (
-            BTreeVectorKeys::u16(1),
-            Source::new(0, SinkSourceDirection::West, 1),
-        ),
+        (0, Source::new(1, SinkSourceDirection::North, 0)),
+        (1, Source::new(0, SinkSourceDirection::West, 1)),
     ]);
 
     let expected_manycore = ManycoreSystem {

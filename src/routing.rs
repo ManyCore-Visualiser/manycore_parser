@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::ManycoreError, BTreeVectorKeys, Borders, Core, Cores, Directions, Edge, ManycoreSystem,
-    SinkSourceDirection, WithXMLAttributes,
+    error::ManycoreError, Borders, Core, Cores, Directions, Edge, ManycoreErrorKind,
+    ManycoreSystem, SinkSourceDirection, WithXMLAttributes,
 };
 
 /// An enum storing all supported routing algorithms.
@@ -56,7 +56,7 @@ pub enum RoutingTarget {
 }
 
 pub fn routing_error(reason: String) -> ManycoreError {
-    ManycoreError::new(crate::error::ManycoreErrorKind::RoutingError(reason))
+    ManycoreError::new(ManycoreErrorKind::RoutingError(reason))
 }
 
 fn no_core(i: &usize) -> ManycoreError {
@@ -111,15 +111,14 @@ impl ManycoreSystem {
         match task_core_map.get(&task_id) {
             Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
             None => {
-                let key = BTreeVectorKeys::u16(task_id);
-                if let Some(sink) = borders.sinks().get(&key) {
+                if let Some(sink) = borders.sinks().get(&task_id) {
                     let idx = sink.core_id();
 
                     Ok((
                         cores.list().get(*idx).ok_or(no_core(idx))?,
                         Some(sink.direction().clone()),
                     ))
-                } else if let Some(source) = borders.sources_mut().get_mut(&key) {
+                } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
                     let idx = *source.core_id();
                     source.add_to_load(communication_cost);
 
@@ -271,7 +270,9 @@ impl ManycoreSystem {
     }
 
     /// ColumnFirst algorithm implementation.
-    fn column_first(&mut self) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
+    fn column_first(
+        &mut self,
+    ) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         let ManycoreSystem {
             ref mut cores,
             ref columns,
@@ -359,7 +360,9 @@ impl ManycoreSystem {
     }
 
     /// Observed route implementation. Mirrors Channels information.
-    fn observed_route(&mut self) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
+    fn observed_route(
+        &mut self,
+    ) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
         let ManycoreSystem {
             ref mut cores,
             ref task_graph,
@@ -388,9 +391,7 @@ impl ManycoreSystem {
         }
 
         for e in task_graph.edges() {
-            let key = BTreeVectorKeys::u16(*e.from());
-
-            if let Some(source) = borders.sources_mut().get_mut(&key) {
+            if let Some(source) = borders.sources_mut().get_mut(e.from()) {
                 source.add_to_load(*e.communication_cost());
             }
         }

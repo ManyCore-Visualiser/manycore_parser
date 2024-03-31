@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use getset::{Getters, MutGetters};
+use manycore_utils::{deserialize_btree_vector, serialise_btreemap_and_sort};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
 use crate::Directions;
 
 use self::sink::Sink;
@@ -26,17 +26,17 @@ pub struct Borders {
     #[serde(
         rename = "Source",
         skip_serializing_if = "BTreeMap::is_empty",
-        serialize_with = "Source::serialize_btree_vector",
-        deserialize_with = "Source::deserialize_btree_vector"
+        serialize_with = "serialise_btreemap_and_sort",
+        deserialize_with = "deserialize_btree_vector"
     )]
-    sources: BTreeMap<BTreeVectorKeys, Source>,
+    sources: BTreeMap<u16, Source>,
     #[serde(
         rename = "Sink",
         skip_serializing_if = "BTreeMap::is_empty",
-        serialize_with = "Sink::serialize_btree_vector",
-        deserialize_with = "Sink::deserialize_btree_vector"
+        serialize_with = "serialise_btreemap_and_sort",
+        deserialize_with = "deserialize_btree_vector"
     )]
-    sinks: BTreeMap<BTreeVectorKeys, Sink>,
+    sinks: BTreeMap<u16, Sink>,
 }
 
 impl Borders {
@@ -45,10 +45,7 @@ impl Borders {
     }
 
     #[cfg(test)]
-    pub fn new(
-        sinks: BTreeMap<BTreeVectorKeys, Sink>,
-        sources: BTreeMap<BTreeVectorKeys, Source>,
-    ) -> Self {
+    pub fn new(sinks: BTreeMap<u16, Sink>, sources: BTreeMap<u16, Source>) -> Self {
         Self { sinks, sources }
     }
 }

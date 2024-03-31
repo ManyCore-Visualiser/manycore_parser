@@ -1,7 +1,6 @@
 use getset::{Getters, MutGetters};
+use manycore_utils::BTreeVector;
 use serde::{Deserialize, Serialize};
-
-use crate::utils::btree::{BTreeVector, BTreeVectorKeys};
 
 use super::SinkSourceDirection;
 
@@ -29,11 +28,9 @@ impl Source {
     }
 }
 
-impl BTreeVector for Source {
-    fn key(self) -> (BTreeVectorKeys, Self) {
-        let key = self.task_id.clone();
-
-        (BTreeVectorKeys::u16(key), self)
+impl BTreeVector<u16> for Source {
+    fn key(&self) -> u16 {
+        self.task_id
     }
 }
 
