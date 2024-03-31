@@ -17,11 +17,11 @@ use std::collections::HashMap;
 pub use crate::borders::*;
 pub use crate::channels::*;
 pub use crate::cores::*;
+pub use crate::error::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
 pub use crate::utils::*;
-pub use crate::error::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
@@ -178,6 +178,16 @@ impl ManycoreSystem {
 
         // Store task->core map
         manycore.task_core_map = task_core_map;
+
+        // Populate core -> source map
+        let Borders {
+            ref sources,
+            ref mut core_source_map,
+            ..
+        } = manycore.borders_mut();
+        for source in sources.values() {
+            core_source_map.insert(*source.core_id(), *source.task_id());
+        }
 
         manycore.configurable_attributes = ConfigurableAttributes {
             core: core_attributes,

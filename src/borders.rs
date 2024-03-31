@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use getset::{Getters, MutGetters};
 use manycore_utils::{deserialize_btree_vector, serialise_btreemap_and_sort};
@@ -29,7 +29,7 @@ pub struct Borders {
         serialize_with = "serialise_btreemap_and_sort",
         deserialize_with = "deserialize_btree_vector"
     )]
-    sources: BTreeMap<u16, Source>,
+    pub(crate) sources: BTreeMap<u16, Source>,
     #[serde(
         rename = "Sink",
         skip_serializing_if = "BTreeMap::is_empty",
@@ -37,6 +37,8 @@ pub struct Borders {
         deserialize_with = "deserialize_btree_vector"
     )]
     sinks: BTreeMap<u16, Sink>,
+    #[serde(skip)]
+    pub(crate) core_source_map: HashMap<usize, u16>,
 }
 
 impl Borders {
@@ -45,8 +47,8 @@ impl Borders {
     }
 
     #[cfg(test)]
-    pub fn new(sinks: BTreeMap<u16, Sink>, sources: BTreeMap<u16, Source>) -> Self {
-        Self { sinks, sources }
+    pub fn new(sinks: BTreeMap<u16, Sink>, sources: BTreeMap<u16, Source>, core_source_map: HashMap<usize, u16>) -> Self {
+        Self { sinks, sources, core_source_map }
     }
 }
 

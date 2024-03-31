@@ -200,6 +200,7 @@ fn can_parse() {
         (0, Source::new(1, SinkSourceDirection::North, 0)),
         (1, Source::new(0, SinkSourceDirection::West, 1)),
     ]);
+    let expected_core_source_map = HashMap::from([(1, 0), (0, 1)]);
 
     let expected_manycore = ManycoreSystem {
         xmlns: String::from(
@@ -210,7 +211,7 @@ fn can_parse() {
         columns: 3,
         rows: 3,
         routing_algo: Some(String::from("RowFirst")),
-        borders: Borders::new(expected_sinks, expected_sources),
+        borders: Borders::new(expected_sinks, expected_sources, expected_core_source_map),
         cores: Cores::new(expected_cores),
         task_graph: expected_graph,
         task_core_map: expected_task_core_map,
