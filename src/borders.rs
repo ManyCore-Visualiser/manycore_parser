@@ -38,7 +38,7 @@ pub struct Borders {
     )]
     sinks: BTreeMap<u16, Sink>,
     #[serde(skip)]
-    pub(crate) core_source_map: HashMap<usize, u16>,
+    pub(crate) core_source_map: HashMap<usize, Vec<u16>>,
 }
 
 impl Borders {
@@ -47,8 +47,16 @@ impl Borders {
     }
 
     #[cfg(test)]
-    pub fn new(sinks: BTreeMap<u16, Sink>, sources: BTreeMap<u16, Source>, core_source_map: HashMap<usize, u16>) -> Self {
-        Self { sinks, sources, core_source_map }
+    pub fn new(
+        sinks: BTreeMap<u16, Sink>,
+        sources: BTreeMap<u16, Source>,
+        core_source_map: HashMap<usize, Vec<u16>>,
+    ) -> Self {
+        Self {
+            sinks,
+            sources,
+            core_source_map,
+        }
     }
 }
 

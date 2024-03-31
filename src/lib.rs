@@ -186,7 +186,10 @@ impl ManycoreSystem {
             ..
         } = manycore.borders_mut();
         for source in sources.values() {
-            core_source_map.insert(*source.core_id(), *source.task_id());
+            core_source_map
+                .entry(*source.core_id())
+                .or_insert(Vec::new())
+                .push(*source.task_id());
         }
 
         manycore.configurable_attributes = ConfigurableAttributes {
