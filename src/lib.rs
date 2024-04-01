@@ -188,6 +188,8 @@ impl ManycoreSystem {
         for source in sources.values() {
             core_source_map
                 .entry(*source.core_id())
+                .or_insert(HashMap::new())
+                .entry(source.direction().clone())
                 .or_insert(Vec::new())
                 .push(*source.task_id());
         }

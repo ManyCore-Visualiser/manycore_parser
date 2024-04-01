@@ -200,7 +200,10 @@ fn can_parse() {
         (0, Source::new(1, SinkSourceDirection::North, 0)),
         (1, Source::new(0, SinkSourceDirection::West, 1)),
     ]);
-    let expected_core_source_map = HashMap::from([(1, vec![0]), (0, vec![1])]);
+    let expected_core_source_map = HashMap::from([
+        (1, HashMap::from([(SinkSourceDirection::North, vec![0])])),
+        (0, HashMap::from([(SinkSourceDirection::West, vec![1])])),
+    ]);
 
     let expected_manycore = ManycoreSystem {
         xmlns: String::from(
