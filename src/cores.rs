@@ -1,4 +1,4 @@
-use crate::{channels::Channels, router::*, utils, WithXMLAttributes};
+use crate::{channels::Channels, router::*, utils, SinkSourceDirection, WithXMLAttributes};
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
@@ -12,6 +12,22 @@ pub enum EdgePosition {
     Bottom,
     BottomLeft,
     BottomRight,
+}
+
+impl From<&EdgePosition> for Vec<SinkSourceDirection> {
+    fn from(position: &EdgePosition) -> Self {
+        use SinkSourceDirection::*;
+        match position {
+            EdgePosition::Bottom => vec![South],
+            EdgePosition::BottomLeft => vec![South, West],
+            EdgePosition::BottomRight => vec![South, East],
+            EdgePosition::Left => vec![West],
+            EdgePosition::Right => vec![East],
+            EdgePosition::Top => vec![North],
+            EdgePosition::TopLeft => vec![North, West],
+            EdgePosition::TopRight => vec![North, East],
+        }
+    }
 }
 
 /// A system's core.
