@@ -190,7 +190,6 @@ fn can_parse() {
         ]),
         algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
         observed_algorithm: Some(String::from("RowFirst")),
-        sinks_sources: true,
     };
 
     let expected_task_core_map = HashMap::from([(3u16, 1usize), (2u16, 7usize), (4u16, 5usize)]);

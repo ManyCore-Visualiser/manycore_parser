@@ -53,8 +53,6 @@ pub struct ConfigurableAttributes {
     algorithms: Vec<RoutingAlgorithms>,
     /// Denotes the presence of an observed routing outcome.
     observed_algorithm: Option<String>,
-    /// Denotes the presence of edge routers.
-    sinks_sources: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
@@ -199,7 +197,6 @@ impl ManycoreSystem {
             router: router_attributes,
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
             observed_algorithm: manycore.routing_algo.clone(),
-            sinks_sources: !manycore.borders.should_skip_serialize(),
         };
 
         Ok(manycore)
