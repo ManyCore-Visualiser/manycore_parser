@@ -25,6 +25,11 @@ pub use crate::utils::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
+pub static ID_KEY: &'static str = "@id";
+pub static COORDINATES_KEY: &'static str = "@coordinates";
+pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
+pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
+
 pub trait WithXMLAttributes {
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
     fn variant(&self) -> &'static str;
@@ -40,6 +45,9 @@ pub trait WithID<T> {
 pub enum AttributeType {
     Text,
     Number,
+    Coordinates,
+    Boolean,
+    Routing,
 }
 
 /// A struct containing information about what customisation
@@ -154,8 +162,11 @@ impl ManycoreSystem {
         let mut channel_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
 
         // Manually insert core attributes that are not part of the "other_attributes" map.
-        core_attributes.insert("@id".to_string(), AttributeType::Text);
-        core_attributes.insert("@coordinates".to_string(), AttributeType::Text);
+        core_attributes.insert(ID_KEY.to_string(), AttributeType::Text);
+        core_attributes.insert(COORDINATES_KEY.to_string(), AttributeType::Coordinates);
+        // Manually insert channel attributes that are not part of the "other_attributes" map.
+        channel_attributes.insert(ROUTING_KEY.to_string(), AttributeType::Routing);
+        channel_attributes.insert(BORDER_ROUTERS_KEY.to_string(), AttributeType::Boolean);
 
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();

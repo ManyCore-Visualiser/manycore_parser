@@ -8,7 +8,7 @@ use std::{
 use crate::{
     sink::Sink, source::Source, AttributeType, Borders, Channel, Channels, ConfigurableAttributes,
     Core, Cores, Directions, Edge, ManycoreSystem, Router, SinkSourceDirection, Task, TaskGraph,
-    WithID, SUPPORTED_ALGORITHMS,
+    WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY, ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -200,8 +200,8 @@ fn can_parse() {
 
     let expected_configurable_attributes = ConfigurableAttributes {
         core: BTreeMap::from([
-            ("@id".to_string(), AttributeType::Text),
-            ("@coordinates".to_string(), AttributeType::Text),
+            (ID_KEY.to_string(), AttributeType::Text),
+            (COORDINATES_KEY.to_string(), AttributeType::Coordinates),
             ("@age".to_string(), AttributeType::Number),
             ("@temperature".to_string(), AttributeType::Number),
             ("@status".to_string(), AttributeType::Text),
@@ -213,6 +213,8 @@ fn can_parse() {
             ("@status".to_string(), AttributeType::Text),
         ]),
         channel: BTreeMap::from([
+            (ROUTING_KEY.to_string(), AttributeType::Routing),
+            (BORDER_ROUTERS_KEY.to_string(), AttributeType::Boolean),
             ("@age".to_string(), AttributeType::Number),
             ("@status".to_string(), AttributeType::Text),
         ]),
