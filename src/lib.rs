@@ -45,7 +45,8 @@ pub enum AttributeType {
 /// A struct containing information about what customisation
 /// parameters to provide the user with.
 /// This will be serialised as JSON
-#[derive(Serialize, Debug, PartialEq, Default, Clone)]
+#[derive(Serialize, Debug, PartialEq, Default, Clone, Getters)]
+#[getset(get = "pub")]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
     /// Core parameters. The key is the parameter name, value is parameter type.
