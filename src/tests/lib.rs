@@ -212,6 +212,10 @@ fn can_parse() {
             ("@temperature".to_string(), AttributeType::Number),
             ("@status".to_string(), AttributeType::Text),
         ]),
+        channel: BTreeMap::from([
+            ("@age".to_string(), AttributeType::Number),
+            ("@status".to_string(), AttributeType::Text),
+        ]),
         algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
         observed_algorithm: Some(String::from("RowFirst")),
     };

@@ -52,6 +52,8 @@ pub struct ConfigurableAttributes {
     core: BTreeMap<String, AttributeType>,
     /// Router parameters. The key is the parameter name, value is parameter type.
     router: BTreeMap<String, AttributeType>,
+    /// Channel parameters. The key is the parameter name, value is parameter type.
+    channel: BTreeMap<String, AttributeType>,
     /// A list of supported routing algorithms.
     algorithms: Vec<RoutingAlgorithms>,
     /// Denotes the presence of an observed routing outcome.
@@ -148,6 +150,7 @@ impl ManycoreSystem {
         // Configurable attributes storage maps
         let mut core_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
         let mut router_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
+        let mut channel_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
 
         // Manually insert core attributes that are not part of the "other_attributes" map.
         core_attributes.insert("@id".to_string(), AttributeType::Text);
@@ -175,6 +178,9 @@ impl ManycoreSystem {
             // Populate attribute maps
             Self::populate_attribute_map(core, &mut core_attributes);
             Self::populate_attribute_map(core.router(), &mut router_attributes);
+            for channel in core.channels().channel().values() {
+                Self::populate_attribute_map(channel, &mut channel_attributes);
+            }
         }
 
         // Store task->core map
@@ -198,6 +204,7 @@ impl ManycoreSystem {
         manycore.configurable_attributes = ConfigurableAttributes {
             core: core_attributes,
             router: router_attributes,
+            channel: channel_attributes,
             algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
             observed_algorithm: manycore.routing_algo.clone(),
         };
