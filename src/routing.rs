@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::ManycoreError, Borders, Core, Cores, Directions, Edge, ManycoreErrorKind,
-    ManycoreSystem, SinkSourceDirection, WithXMLAttributes,
+    ManycoreSystem, SinkSourceDirection, WithID,
 };
 
 /// An enum storing all supported routing algorithms.
@@ -22,6 +22,7 @@ pub static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 3] = [
     RoutingAlgorithms::ColumnFirst,
 ];
 
+#[derive(Debug)]
 /// Provides information for routing a task graph edge.
 struct EdgeRoutingInformation {
     /// The source core id.
@@ -74,22 +75,29 @@ pub fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, ManycoreError>
     cores.list_mut().get_mut(i).ok_or(no_core(&i))
 }
 
+fn add_to_ret(
+    key: RoutingTarget,
+    direction: Directions,
+    ret: &mut HashMap<RoutingTarget, HashSet<Directions>>,
+) {
+    ret.entry(key).or_insert(HashSet::new()).insert(direction);
+}
+
 fn handle_borders(
     cores: &mut Cores,
-    add_to_ret: &mut impl FnMut(RoutingTarget, Directions),
+    ret: &mut HashMap<RoutingTarget, HashSet<Directions>>,
     eri: &EdgeRoutingInformation,
 ) -> Result<(), ManycoreError> {
     if let Some(source_direction) = eri.source_direction.as_ref() {
         let direction = source_direction.into();
-
-        add_to_ret(RoutingTarget::Source(eri.from), direction);
+        add_to_ret(RoutingTarget::Source(eri.from), direction, ret);
     }
 
     if let Some(sink_direction) = eri.sink_direction.as_ref() {
         let direction = sink_direction.into();
         let destination_idx = usize::from(eri.destination_id);
 
-        add_to_ret(RoutingTarget::Sink(destination_idx), direction);
+        add_to_ret(RoutingTarget::Sink(destination_idx), direction, ret);
 
         get_core(cores, destination_idx)?
             .channels_mut()
@@ -196,10 +204,6 @@ impl ManycoreSystem {
 
         // Return value. Stores non-zero core-edge pairs.
         let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
-        // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(HashSet::new()).insert(direction);
-        };
 
         // For each edge in the task graph
         for edge in task_graph.edges() {
@@ -212,7 +216,7 @@ impl ManycoreSystem {
                 rows,
             )?;
 
-            handle_borders(cores, &mut add_to_ret, &eri)?;
+            handle_borders(cores, &mut ret, &eri)?;
 
             let mut current_idx = usize::from(eri.start_id);
             let mut core;
@@ -229,14 +233,14 @@ impl ManycoreSystem {
                     // Row first
                     if eri.start_id > eri.destination_id {
                         // Going up
-                        add_to_ret(ret_key, Directions::North);
+                        add_to_ret(ret_key, Directions::North, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
                         current_idx -= usize::from(*columns);
                         eri.current_row -= 1;
                     } else {
                         // Going down
-                        add_to_ret(ret_key, Directions::South);
+                        add_to_ret(ret_key, Directions::South, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
                         current_idx += usize::from(*columns);
@@ -246,14 +250,14 @@ impl ManycoreSystem {
                     // Then column
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(ret_key, Directions::West);
+                        add_to_ret(ret_key, Directions::West, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(ret_key, Directions::East);
+                        add_to_ret(ret_key, Directions::East, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
                         current_idx += 1;
@@ -285,10 +289,6 @@ impl ManycoreSystem {
 
         // Return value. Stores non-zero core-edge pairs.
         let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
-        // This closure adds a key-value pair to the result.
-        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(HashSet::new()).insert(direction);
-        };
 
         // For each edge in the task graph
         for edge in task_graph.edges() {
@@ -301,7 +301,7 @@ impl ManycoreSystem {
                 rows,
             )?;
 
-            handle_borders(cores, &mut add_to_ret, &eri)?;
+            handle_borders(cores, &mut ret, &eri)?;
 
             let mut current_idx = usize::from(eri.start_id);
             let mut core;
@@ -318,14 +318,14 @@ impl ManycoreSystem {
                     // Column first
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(ret_key, Directions::West);
+                        add_to_ret(ret_key, Directions::West, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(ret_key, Directions::East);
+                        add_to_ret(ret_key, Directions::East, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
                         current_idx += 1;
@@ -336,14 +336,14 @@ impl ManycoreSystem {
 
                     if eri.start_id > eri.destination_id {
                         // Going up
-                        add_to_ret(ret_key, Directions::North);
+                        add_to_ret(ret_key, Directions::North, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
                         current_idx -= usize::from(*columns);
                         eri.current_row -= 1;
                     } else {
                         // Going down
-                        add_to_ret(ret_key, Directions::South);
+                        add_to_ret(ret_key, Directions::South, &mut ret);
 
                         let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
                         current_idx += usize::from(*columns);
@@ -372,18 +372,14 @@ impl ManycoreSystem {
 
         let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
 
-        let mut add_to_ret = |key: RoutingTarget, direction: Directions| {
-            ret.entry(key).or_insert(HashSet::new()).insert(direction);
-        };
-
         let mut core;
         for i in 0..cores.list().len() {
             let ret_key = RoutingTarget::Core(i);
             core = get_core(cores, i)?;
             for (direction, channel) in core.channels_mut().channel_mut() {
-                let packets = *channel.packets_transmitted();
+                let packets = *channel.actual_com_cost();
                 if packets != 0 {
-                    add_to_ret(ret_key.clone(), *direction);
+                    add_to_ret(ret_key.clone(), *direction, &mut ret);
 
                     channel.add_to_cost(packets);
                 }

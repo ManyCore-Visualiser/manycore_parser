@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     error::{ManycoreError, ManycoreErrorKind},
-    Core, ManycoreSystem, WithXMLAttributes,
+    Core, Directions, ManycoreSystem, WithID, WithXMLAttributes,
 };
 
 impl ManycoreSystem {
@@ -14,21 +14,32 @@ impl ManycoreSystem {
     /// and the number is the element's index.
     pub fn get_core_router_specific_info(
         &self,
-        mut group_id: String,
+        ref group_id: String,
     ) -> Result<Option<BTreeMap<String, String>>, ManycoreError> {
         if group_id.len() == 0 {
             return Err(self.info_error("Empty group_id."));
         };
 
-        let variant_string = group_id.remove(0).to_string();
+        let group_split = group_id.split("_").collect::<Vec<&str>>();
+
+        let mut variant_chars = group_split[0].chars();
+        let variant_char = variant_chars.next().ok_or(
+            self.info_error("Something went wrong retrieving this element's information."),
+        )?;
+        let id_char = variant_chars
+            .next()
+            .ok_or(self.info_error("Invalid group id."))?;
 
         let core: &Core = self
             .cores()
             .list()
             .get(
-                group_id
-                    .parse::<usize>()
-                    .map_err(|_| self.info_error("Invalid group_id."))?,
+                usize::try_from(
+                    id_char
+                        .to_digit(10)
+                        .ok_or(self.info_error("Invalid group_id."))?,
+                )
+                .map_err(|_| self.info_error("Invalid group id."))?,
             )
             .ok_or(self.info_error("Invalid index."))?;
 
@@ -44,14 +55,14 @@ impl ManycoreSystem {
             tree
         };
 
-        match variant_string.as_str() {
-            "r" => {
+        match variant_char {
+            'r' => {
                 // All relevant router info is already stored in the "other_attributes" map.
                 let attributes_clone = core.router().other_attributes().clone();
 
                 Ok(attributes_clone)
             }
-            "c" => {
+            'c' => {
                 let attributes_clone = core.other_attributes().clone();
 
                 // We clone the core's map and insert missing fields.
@@ -59,6 +70,23 @@ impl ManycoreSystem {
                     Some(attributes) => Ok(Some(insert_core_default(attributes))),
                     None => Ok(Some(insert_core_default(BTreeMap::new()))),
                 }
+            }
+            'l' => {
+                let direction: Directions = (*group_split
+                    .get(1)
+                    .ok_or(self.info_error("Invalid channel ID."))?)
+                .try_into()?;
+
+                // All relevant link info is already stored in the "other_attributes" map.
+                let attributes_clone = core
+                    .channels()
+                    .channel()
+                    .get(&direction)
+                    .ok_or(self.info_error("Channel direction mismatch: Could not retrieve this channel's information."))?
+                    .other_attributes()
+                    .clone();
+
+                Ok(attributes_clone)
             }
             _ => Err(self.info_error("Invalid variant.")),
         }

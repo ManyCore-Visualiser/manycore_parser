@@ -3,7 +3,7 @@
 <ManycoreSystem
     xmlns="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/057205e76461d12f33c7a54b27d5b2c99d57d9a8/manycore_schema.xsd"
+    xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/405336e08936e8ac19d5331603796c5bf928657e/manycore_schema.xsd"
     rows="3"
     columns="3"
     routingAlgo="RowFirst"
@@ -25,14 +25,14 @@
         <Core id="0" age="238" status="High" actualFrequency="Low" temperature="45">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
@@ -40,56 +40,56 @@
             allocatedTask="3">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
         <Core id="2" age="157" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
         <Core id="3" age="225" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
         <Core id="4" age="478" status="High" actualFrequency="High" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
@@ -97,28 +97,28 @@
             allocatedTask="4">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
         <Core id="6" age="18" status="High" actualFrequency="High" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
@@ -126,28 +126,28 @@
             allocatedTask="2">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
 
         <Core id="8" age="10" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
-                <Channel direction="North" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="North" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="West" age="30" packetsTransmitted="0" status="Normal"
+                <Channel direction="West" age="30" actualComCost="0" status="Normal"
                     bandwidth="400" />
-                <Channel direction="East" age="30" packetsTransmitted="4" status="Normal"
+                <Channel direction="East" age="30" actualComCost="4" status="Normal"
                     bandwidth="400" />
-                <Channel direction="South" age="30" packetsTransmitted="4" status="Normal"
-                    packetIndex="0" bandwidth="400" />
+                <Channel direction="South" age="30" actualComCost="4" status="Normal"
+                    bandwidth="400" />
             </Channels>
         </Core>
     </Cores>

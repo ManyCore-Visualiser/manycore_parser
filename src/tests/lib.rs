@@ -6,9 +6,9 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    sink::Sink, source::Source, AttributeType, Borders, Channel, ChannelStatus, Channels,
-    ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem, Router,
-    SinkSourceDirection, Task, TaskGraph, WithXMLAttributes, SUPPORTED_ALGORITHMS,
+    sink::Sink, source::Source, AttributeType, Borders, Channel, Channels, ConfigurableAttributes,
+    Core, Cores, Directions, Edge, ManycoreSystem, Router, SinkSourceDirection, Task, TaskGraph,
+    WithID, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -34,23 +34,47 @@ fn can_parse() {
     ];
 
     let expected_graph = TaskGraph::new(expected_tasks, expected_edges);
+    let expected_channel_attributes = BTreeMap::from([
+        ("@age".into(), "30".into()),
+        ("@status".into(), "Normal".into()),
+    ]);
 
     let expected_channels = Channels::new(BTreeMap::from([
         (
             Directions::North,
-            Channel::new(Directions::North, 30, 4, ChannelStatus::Normal, 400),
+            Channel::new(
+                Directions::North,
+                4,
+                400,
+                Some(expected_channel_attributes.clone()),
+            ),
         ),
         (
             Directions::South,
-            Channel::new(Directions::South, 30, 4, ChannelStatus::Normal, 400),
+            Channel::new(
+                Directions::South,
+                4,
+                400,
+                Some(expected_channel_attributes.clone()),
+            ),
         ),
         (
             Directions::East,
-            Channel::new(Directions::East, 30, 4, ChannelStatus::Normal, 400),
+            Channel::new(
+                Directions::East,
+                4,
+                400,
+                Some(expected_channel_attributes.clone()),
+            ),
         ),
         (
             Directions::West,
-            Channel::new(Directions::West, 30, 0, ChannelStatus::Normal, 400),
+            Channel::new(
+                Directions::West,
+                0,
+                400,
+                Some(expected_channel_attributes.clone()),
+            ),
         ),
     ]));
 
@@ -209,7 +233,7 @@ fn can_parse() {
             "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
         ),
         xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
-        xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/057205e76461d12f33c7a54b27d5b2c99d57d9a8/manycore_schema.xsd"),
+        xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/405336e08936e8ac19d5331603796c5bf928657e/manycore_schema.xsd"),
         columns: 3,
         rows: 3,
         routing_algo: Some(String::from("RowFirst")),

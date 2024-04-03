@@ -1,4 +1,4 @@
-use crate::{channels::Channels, router::*, utils, SinkSourceDirection, WithXMLAttributes};
+use crate::{channels::Channels, router::*, utils, SinkSourceDirection, WithID, WithXMLAttributes};
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
@@ -109,16 +109,18 @@ impl Hash for Core {
 }
 
 impl WithXMLAttributes for Core {
-    fn id(&self) -> &u8 {
-        &self.id
-    }
-
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
 
     fn variant(&self) -> &'static str {
         &"c"
+    }
+}
+
+impl WithID<u8> for Core {
+    fn id(&self) -> &u8 {
+        &self.id
     }
 }
 

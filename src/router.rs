@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use getset::Setters;
 use serde::{Deserialize, Serialize};
 
-use crate::{utils, WithXMLAttributes};
+use crate::{utils, WithID, WithXMLAttributes};
 
 /// A core's router.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Setters)]
@@ -32,15 +32,17 @@ impl Router {
 }
 
 impl WithXMLAttributes for Router {
-    fn id(&self) -> &u8 {
-        &self.id
-    }
-
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
         &self.other_attributes
     }
 
     fn variant(&self) -> &'static str {
         &"r"
+    }
+}
+
+impl WithID<u8> for Router {
+    fn id(&self) -> &u8 {
+        &self.id
     }
 }

@@ -4,6 +4,13 @@ use getset::Getters;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::ManycoreError;
+use crate::utils::attrs::deserialize_attrs;
+use crate::{ManycoreErrorKind, WithXMLAttributes};
+
+static NORTH: &str = "North";
+static SOUTH: &str = "South";
+static WEST: &str = "West";
+static EAST: &str = "East";
 
 /// An enum containing all allowed channel directions.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -16,14 +23,35 @@ pub enum Directions {
 
 impl Display for Directions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{}", String::from(self))
     }
 }
 
-/// An enum containing all the possible channel states.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub enum ChannelStatus {
-    Normal,
+impl From<&Directions> for String {
+    fn from(direction: &Directions) -> Self {
+        match direction {
+            Directions::North => NORTH.into(),
+            Directions::South => SOUTH.into(),
+            Directions::West => WEST.into(),
+            Directions::East => EAST.into(),
+        }
+    }
+}
+
+impl TryFrom<&str> for Directions {
+    type Error = ManycoreError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            n if n == NORTH => Ok(Directions::North),
+            s if s == SOUTH => Ok(Directions::South),
+            w if w == WEST => Ok(Directions::West),
+            e if e == EAST => Ok(Directions::East),
+            _ => Err(ManycoreError::new(ManycoreErrorKind::GenerationError(
+                format!("'{value}' is not a valid direction."),
+            ))),
+        }
+    }
 }
 
 /// A channel.
@@ -32,47 +60,56 @@ pub struct Channel {
     /// The channel's direction.
     #[serde(rename = "@direction")]
     direction: Directions,
-    /// The channel's age.
-    #[serde(rename = "@age")]
-    age: u8,
-    /// Number of packets transmitted over the channel.
-    #[serde(rename = "@packetsTransmitted")]
-    #[getset(get = "pub")]
-    packets_transmitted: u16,
-    /// The channel's status.
-    #[serde(rename = "@status")]
-    status: ChannelStatus,
     /// The channel's bandwidth.
     #[serde(rename = "@bandwidth")]
     #[getset(get = "pub")]
     bandwidth: u16,
+    #[serde(rename = "@actualComCost")]
+    #[getset(get = "pub")]
+    actual_com_cost: u16,
     /// The load on the channel
     #[serde(skip)]
     #[getset(get = "pub")]
     current_load: u16,
+    /// Any other channel attribute present in the XML.
+    #[serde(
+        flatten,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_attrs"
+    )]
+    #[getset(skip)]
+    other_attributes: Option<BTreeMap<String, String>>,
 }
 
 impl Channel {
     /// Instantiates a new channel.
     pub fn new(
         direction: Directions,
-        age: u8,
-        packets_transmitted: u16,
-        status: ChannelStatus,
+        actual_com_cost: u16,
         bandwidth: u16,
+        other_attributes: Option<BTreeMap<String, String>>,
     ) -> Self {
         Self {
             direction,
-            age,
-            packets_transmitted,
-            status,
+            actual_com_cost,
             bandwidth,
+            other_attributes,
             current_load: 0,
         }
     }
 
     pub fn add_to_cost(&mut self, cost: u16) {
         self.current_load += cost;
+    }
+}
+
+impl WithXMLAttributes for Channel {
+    fn other_attributes(&self) -> &Option<BTreeMap<String, String>> {
+        &self.other_attributes
+    }
+
+    fn variant(&self) -> &'static str {
+        "l"
     }
 }
 
