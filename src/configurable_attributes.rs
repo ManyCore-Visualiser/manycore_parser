@@ -14,7 +14,7 @@ pub trait WithID<T> {
     fn id(&self) -> &T;
 }
 
-#[derive(Serialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Debug, PartialEq, Clone, Copy)]
 pub enum AttributeType {
     Text,
     Number,
@@ -23,7 +23,7 @@ pub enum AttributeType {
     Routing,
 }
 
-#[derive(Serialize, PartialEq, Debug)]
+#[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct ProcessedAttribute {
     _type: AttributeType,
     display: String,
@@ -88,7 +88,7 @@ impl ProcessedAttribute {
 /// A struct containing information about what customisation
 /// parameters to provide the user with.
 /// This will be serialised as JSON
-#[derive(Serialize, Getters, Default, PartialEq, Debug)]
+#[derive(Serialize, Getters, Default, PartialEq, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableAttributes {
     core: BTreeMap<String, ProcessedAttribute>,
