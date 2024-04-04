@@ -31,8 +31,18 @@ pub struct ProcessedAttribute {
 
 impl ProcessedAttribute {
     fn format_display(key: &String) -> String {
+        if key.len() == 0 {
+            // TODO: Throw Error
+            return "".to_string();
+        }
+        // Skip @ symbol
+        let clean_key = key.chars().skip(1).collect::<String>();
+
         // Uppercase chars indices (true = uppercase, false = lowercase)
-        let upper_i = key.chars().map(|c| c.is_uppercase()).collect::<Vec<bool>>();
+        let upper_i = clean_key
+            .chars()
+            .map(|c| c.is_uppercase())
+            .collect::<Vec<bool>>();
         // Last iterable item
         let last = upper_i.len() - 1;
 
@@ -54,19 +64,19 @@ impl ProcessedAttribute {
                 // Useful to catch multiple uppercase chars that form a
                 // block and are then followed by another word.
                 // e.g. helloCAMELCase -> hello camel case
-                ret.push_str(&key[prev..=(i - 1)].to_lowercase());
+                ret.push_str(&clean_key[prev..=(i - 1)].to_lowercase());
                 ret.push(' ');
                 prev = i;
             } else if !first && second {
                 // This condition is met for something like aB.
                 // e.g. camelCase -> camel case
-                ret.push_str(&key[prev..=i].to_lowercase());
+                ret.push_str(&clean_key[prev..=i].to_lowercase());
                 ret.push(' ');
                 prev = i + 1;
             }
         }
         // Append remaining string, if any
-        ret.push_str(&key[prev..].to_lowercase());
+        ret.push_str(&clean_key[prev..].to_lowercase());
 
         // Trim any excess space
         let mut result = ret.trim_end().to_string();
