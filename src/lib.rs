@@ -2,6 +2,7 @@
 
 mod borders;
 mod channels;
+mod configurable_attributes;
 mod cores;
 mod error;
 mod graph;
@@ -22,6 +23,7 @@ pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
 pub use crate::utils::*;
+pub use configurable_attributes::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 
@@ -29,45 +31,6 @@ pub static ID_KEY: &'static str = "@id";
 pub static COORDINATES_KEY: &'static str = "@coordinates";
 pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
 pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
-
-pub trait WithXMLAttributes {
-    fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
-    fn variant(&self) -> &'static str;
-}
-
-pub trait WithID<T> {
-    fn id(&self) -> &T;
-}
-
-// This will be serialised as JSON
-#[derive(Serialize, Debug, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum AttributeType {
-    Text,
-    Number,
-    Coordinates,
-    Boolean,
-    Routing,
-}
-
-/// A struct containing information about what customisation
-/// parameters to provide the user with.
-/// This will be serialised as JSON
-#[derive(Serialize, Debug, PartialEq, Default, Clone, Getters)]
-#[getset(get = "pub")]
-#[serde(rename_all = "camelCase")]
-pub struct ConfigurableAttributes {
-    /// Core parameters. The key is the parameter name, value is parameter type.
-    core: BTreeMap<String, AttributeType>,
-    /// Router parameters. The key is the parameter name, value is parameter type.
-    router: BTreeMap<String, AttributeType>,
-    /// Channel parameters. The key is the parameter name, value is parameter type.
-    channel: BTreeMap<String, AttributeType>,
-    /// A list of supported routing algorithms.
-    algorithms: Vec<RoutingAlgorithms>,
-    /// Denotes the presence of an observed routing outcome.
-    observed_algorithm: Option<String>,
-}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
@@ -118,29 +81,6 @@ fn generation_error(reason: String) -> ManycoreError {
 }
 
 impl ManycoreSystem {
-    /// Retrieves all available attributes and their type, and inserts them in the given map.
-    fn populate_attribute_map<T: WithXMLAttributes>(
-        item: &T,
-        map: &mut BTreeMap<String, AttributeType>,
-    ) {
-        // Are there any attributes we can inspect?
-        if let Some(other_attributes) = item.other_attributes() {
-            for (key, value) in other_attributes {
-                // It's worth inspecting the attribute only if missing in the map.
-                if !map.contains_key(key) {
-                    // If parsing the attribute value as a number fails, the attribute must
-                    // be a string.
-                    let attribute_type = match value.parse::<u64>() {
-                        Ok(_) => AttributeType::Number,
-                        Err(_) => AttributeType::Text,
-                    };
-
-                    map.insert(key.clone(), attribute_type);
-                }
-            }
-        }
-    }
-
     /// Deserialises an XML file into a ManycoreSystem struct.
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, ManycoreError> {
         let file_content =
@@ -157,16 +97,16 @@ impl ManycoreSystem {
             .sort_by(|me, other| me.id().cmp(&other.id()));
 
         // Configurable attributes storage maps
-        let mut core_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
-        let mut router_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
-        let mut channel_attributes: BTreeMap<String, AttributeType> = BTreeMap::new();
+        let mut core_attributes: BTreeMap<String, ProcessedAttribute> = BTreeMap::new();
+        let mut router_attributes: BTreeMap<String, ProcessedAttribute> = BTreeMap::new();
+        let mut channel_attributes: BTreeMap<String, ProcessedAttribute> = BTreeMap::new();
 
         // Manually insert core attributes that are not part of the "other_attributes" map.
-        core_attributes.insert(ID_KEY.to_string(), AttributeType::Text);
-        core_attributes.insert(COORDINATES_KEY.to_string(), AttributeType::Coordinates);
+        core_attributes.insert_manual(ID_KEY, AttributeType::Text);
+        core_attributes.insert_manual(COORDINATES_KEY, AttributeType::Coordinates);
         // Manually insert channel attributes that are not part of the "other_attributes" map.
-        channel_attributes.insert(ROUTING_KEY.to_string(), AttributeType::Routing);
-        channel_attributes.insert(BORDER_ROUTERS_KEY.to_string(), AttributeType::Boolean);
+        channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
+        channel_attributes.insert_manual(BORDER_ROUTERS_KEY, AttributeType::Boolean);
 
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
@@ -188,10 +128,10 @@ impl ManycoreSystem {
             core.router_mut().set_id(i as u8);
 
             // Populate attribute maps
-            Self::populate_attribute_map(core, &mut core_attributes);
-            Self::populate_attribute_map(core.router(), &mut router_attributes);
+            core_attributes.extend_from_element(core);
+            router_attributes.extend_from_element(core.router());
             for channel in core.channels().channel().values() {
-                Self::populate_attribute_map(channel, &mut channel_attributes);
+                channel_attributes.extend_from_element(channel);
             }
         }
 
@@ -213,13 +153,13 @@ impl ManycoreSystem {
                 .push(*source.task_id());
         }
 
-        manycore.configurable_attributes = ConfigurableAttributes {
-            core: core_attributes,
-            router: router_attributes,
-            channel: channel_attributes,
-            algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
-            observed_algorithm: manycore.routing_algo.clone(),
-        };
+        manycore.configurable_attributes = ConfigurableAttributes::new(
+            core_attributes,
+            router_attributes,
+            manycore.routing_algo.clone(),
+            Vec::from(&SUPPORTED_ALGORITHMS),
+            channel_attributes,
+        );
 
         Ok(manycore)
     }

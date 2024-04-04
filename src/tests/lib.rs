@@ -6,9 +6,10 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    sink::Sink, source::Source, AttributeType, Borders, Channel, Channels, ConfigurableAttributes,
-    Core, Cores, Directions, Edge, ManycoreSystem, Router, SinkSourceDirection, Task, TaskGraph,
-    WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY, ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
+    sink::Sink, source::Source, AttributeType, AttributesMap, Borders, Channel, Channels,
+    ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem, ProcessedAttribute,
+    Router, SinkSourceDirection, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY,
+    ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -22,6 +23,11 @@ impl Router {
 
 #[test]
 fn can_parse() {
+    let age_string = "@age".to_string();
+    let temperature_string = "@temperature".to_string();
+    let status_string = "@status".to_string();
+    let acc_freq_string = "@actualFrequency".to_string();
+
     let expected_tasks = vec![Task::new(2, 40), Task::new(3, 80), Task::new(4, 60)];
 
     let expected_edges = vec![
@@ -35,8 +41,8 @@ fn can_parse() {
 
     let expected_graph = TaskGraph::new(expected_tasks, expected_edges);
     let expected_channel_attributes = BTreeMap::from([
-        ("@age".into(), "30".into()),
-        ("@status".into(), "Normal".into()),
+        (age_string.clone(), "30".into()),
+        (status_string.clone(), "Normal".into()),
     ]);
 
     let expected_channels = Channels::new(BTreeMap::from([
@@ -81,9 +87,9 @@ fn can_parse() {
     let mut expected_router = Router::new(
         0,
         Some(BTreeMap::from([
-            ("@age".to_string(), "30".to_string()),
-            ("@temperature".to_string(), "30".to_string()),
-            ("@status".to_string(), "Normal".to_string()),
+            (age_string.clone(), "30".to_string()),
+            (temperature_string.clone(), "30".to_string()),
+            (status_string.clone(), "Normal".to_string()),
         ])),
     );
 
@@ -94,10 +100,10 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "238".to_string()),
-                ("@temperature".to_string(), "45".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Low".to_string()),
+                (age_string.clone(), "238".to_string()),
+                (temperature_string.clone(), "45".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Low".to_string()),
             ])),
         ),
         Core::new(
@@ -106,10 +112,10 @@ fn can_parse() {
             Some(3),
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "394".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "High".to_string()),
+                (age_string.clone(), "394".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "High".to_string()),
             ])),
         ),
         Core::new(
@@ -118,10 +124,10 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "157".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Low".to_string()),
+                (age_string.clone(), "157".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Low".to_string()),
             ])),
         ),
         Core::new(
@@ -130,10 +136,10 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "225".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Low".to_string()),
+                (age_string.clone(), "225".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Low".to_string()),
             ])),
         ),
         Core::new(
@@ -142,10 +148,10 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "478".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "High".to_string()),
+                (age_string.clone(), "478".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "High".to_string()),
             ])),
         ),
         Core::new(
@@ -154,10 +160,10 @@ fn can_parse() {
             Some(4),
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "105".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Low".to_string()),
+                (age_string.clone(), "105".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Low".to_string()),
             ])),
         ),
         Core::new(
@@ -166,10 +172,10 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "18".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "High".to_string()),
+                (age_string.clone(), "18".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "High".to_string()),
             ])),
         ),
         Core::new(
@@ -178,10 +184,10 @@ fn can_parse() {
             Some(2),
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "15".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Mid".to_string()),
+                (age_string.clone(), "15".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Mid".to_string()),
             ])),
         ),
         Core::new(
@@ -190,37 +196,70 @@ fn can_parse() {
             None,
             expected_channels.clone(),
             Some(BTreeMap::from([
-                ("@age".to_string(), "10".to_string()),
-                ("@temperature".to_string(), "30".to_string()),
-                ("@status".to_string(), "High".to_string()),
-                ("@actualFrequency".to_string(), "Low".to_string()),
+                (age_string.clone(), "10".to_string()),
+                (temperature_string.clone(), "30".to_string()),
+                (status_string.clone(), "High".to_string()),
+                (acc_freq_string.clone(), "Low".to_string()),
             ])),
         ),
     ];
 
-    let expected_configurable_attributes = ConfigurableAttributes {
-        core: BTreeMap::from([
-            (ID_KEY.to_string(), AttributeType::Text),
-            (COORDINATES_KEY.to_string(), AttributeType::Coordinates),
-            ("@age".to_string(), AttributeType::Number),
-            ("@temperature".to_string(), AttributeType::Number),
-            ("@status".to_string(), AttributeType::Text),
-            ("@actualFrequency".to_string(), AttributeType::Text),
-        ]),
-        router: BTreeMap::from([
-            ("@age".to_string(), AttributeType::Number),
-            ("@temperature".to_string(), AttributeType::Number),
-            ("@status".to_string(), AttributeType::Text),
-        ]),
-        channel: BTreeMap::from([
-            (ROUTING_KEY.to_string(), AttributeType::Routing),
-            (BORDER_ROUTERS_KEY.to_string(), AttributeType::Boolean),
-            ("@age".to_string(), AttributeType::Number),
-            ("@status".to_string(), AttributeType::Text),
-        ]),
-        algorithms: Vec::from(&SUPPORTED_ALGORITHMS),
-        observed_algorithm: Some(String::from("RowFirst")),
-    };
+    let mut expected_core_conf_attrs = BTreeMap::from([
+        (
+            age_string.clone(),
+            ProcessedAttribute::new(&age_string, AttributeType::Number),
+        ),
+        (
+            temperature_string.clone(),
+            ProcessedAttribute::new(&temperature_string, AttributeType::Number),
+        ),
+        (
+            status_string.clone(),
+            ProcessedAttribute::new(&status_string, AttributeType::Text),
+        ),
+        (
+            acc_freq_string.clone(),
+            ProcessedAttribute::new(&acc_freq_string, AttributeType::Text),
+        ),
+    ]);
+    expected_core_conf_attrs.insert_manual(ID_KEY, AttributeType::Text);
+    expected_core_conf_attrs.insert_manual(COORDINATES_KEY, AttributeType::Coordinates);
+
+    let expected_router_conf_attrs = BTreeMap::from([
+        (
+            age_string.clone(),
+            ProcessedAttribute::new(&age_string, AttributeType::Number),
+        ),
+        (
+            temperature_string.clone(),
+            ProcessedAttribute::new(&temperature_string, AttributeType::Number),
+        ),
+        (
+            status_string.clone(),
+            ProcessedAttribute::new(&status_string, AttributeType::Text),
+        ),
+    ]);
+
+    let mut expected_channel_conf_attrs = BTreeMap::from([
+        (
+            age_string.clone(),
+            ProcessedAttribute::new(&age_string, AttributeType::Number),
+        ),
+        (
+            status_string.clone(),
+            ProcessedAttribute::new(&status_string, AttributeType::Text),
+        ),
+    ]);
+    expected_channel_conf_attrs.insert_manual(ROUTING_KEY, AttributeType::Routing);
+    expected_channel_conf_attrs.insert_manual(BORDER_ROUTERS_KEY, AttributeType::Boolean);
+
+    let expected_configurable_attributes = ConfigurableAttributes::new(
+        expected_core_conf_attrs,
+        expected_router_conf_attrs,
+        Some(String::from("RowFirst")),
+        Vec::from(&SUPPORTED_ALGORITHMS),
+        expected_channel_conf_attrs,
+    );
 
     let expected_task_core_map = HashMap::from([(3u16, 1usize), (2u16, 7usize), (4u16, 5usize)]);
 
