@@ -25,6 +25,7 @@ pub enum AttributeType {
 
 #[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct ProcessedAttribute {
+    #[serde(rename = "type")]
     _type: AttributeType,
     display: String,
 }
