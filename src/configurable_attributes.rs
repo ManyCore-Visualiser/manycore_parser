@@ -15,6 +15,7 @@ pub trait WithID<T> {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 pub enum AttributeType {
     Text,
     Number,
