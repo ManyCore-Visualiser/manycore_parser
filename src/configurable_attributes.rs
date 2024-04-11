@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use getset::Getters;
 use serde::Serialize;
 
-use crate::RoutingAlgorithms;
+use crate::{RoutingAlgorithms, ROUTING_KEY};
 
 pub trait WithXMLAttributes {
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
@@ -90,6 +90,14 @@ impl ProcessedAttribute {
     }
 
     pub(crate) fn new(key: &String, _type: AttributeType) -> Self {
+        // We want to rename the routing algorithm display property to "Loads"
+        if key.eq(ROUTING_KEY) {
+            return Self {
+                _type,
+                display: "Load".to_string(),
+            };
+        }
+
         Self {
             _type,
             display: Self::format_display(key),
