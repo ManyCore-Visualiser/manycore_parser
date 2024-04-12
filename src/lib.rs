@@ -138,20 +138,8 @@ impl ManycoreSystem {
         // Store task->core map
         manycore.task_core_map = task_core_map;
 
-        // Populate core -> source map
-        let Borders {
-            ref sources,
-            ref mut core_source_map,
-            ..
-        } = manycore.borders_mut();
-        for source in sources.values() {
-            core_source_map
-                .entry(*source.core_id())
-                .or_insert(HashMap::new())
-                .entry(source.direction().clone())
-                .or_insert(Vec::new())
-                .push(*source.task_id());
-        }
+        // Populate core -> border map
+        manycore.borders_mut().compute_core_border_map();
 
         manycore.configurable_attributes = ConfigurableAttributes::new(
             core_attributes,

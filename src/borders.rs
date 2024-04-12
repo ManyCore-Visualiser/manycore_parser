@@ -12,12 +12,18 @@ use self::source::Source;
 pub mod sink;
 pub mod source;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, PartialOrd, Ord, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum SinkSourceDirection {
     North,
     South,
     East,
     West,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum BorderEntry {
+    Source(u16),
+    Sink(u16),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters)]
@@ -29,7 +35,7 @@ pub struct Borders {
         serialize_with = "serialise_btreemap_and_sort",
         deserialize_with = "deserialize_btree_vector"
     )]
-    pub(crate) sources: BTreeMap<u16, Source>,
+    sources: BTreeMap<u16, Source>,
     #[serde(
         rename = "Sink",
         skip_serializing_if = "BTreeMap::is_empty",
@@ -38,7 +44,8 @@ pub struct Borders {
     )]
     sinks: BTreeMap<u16, Sink>,
     #[serde(skip)]
-    pub(crate) core_source_map: HashMap<usize, HashMap<SinkSourceDirection, Vec<u16>>>,
+    #[getset(get = "pub")]
+    core_border_map: HashMap<usize, HashMap<SinkSourceDirection, BorderEntry>>,
 }
 
 impl Borders {
@@ -50,12 +57,28 @@ impl Borders {
     pub fn new(
         sinks: BTreeMap<u16, Sink>,
         sources: BTreeMap<u16, Source>,
-        core_source_map: HashMap<usize, HashMap<SinkSourceDirection, Vec<u16>>>,
+        core_border_map: HashMap<usize, HashMap<SinkSourceDirection, BorderEntry>>,
     ) -> Self {
         Self {
             sinks,
             sources,
-            core_source_map,
+            core_border_map,
+        }
+    }
+
+    pub fn compute_core_border_map(&mut self) {
+        for source in self.sources.values() {
+            self.core_border_map
+                .entry(*source.core_id())
+                .or_insert(HashMap::new())
+                .insert(*source.direction(), BorderEntry::Source(*source.task_id()));
+        }
+
+        for sink in self.sinks.values() {
+            self.core_border_map
+                .entry(*sink.core_id())
+                .or_insert(HashMap::new())
+                .insert(*sink.direction(), BorderEntry::Sink(*sink.task_id()));
         }
     }
 }

@@ -6,10 +6,10 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    sink::Sink, source::Source, AttributeType, AttributesMap, Borders, Channel, Channels,
-    ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem, ProcessedAttribute,
-    Router, SinkSourceDirection, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY,
-    ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
+    sink::Sink, source::Source, AttributeType, AttributesMap, BorderEntry, Borders, Channel,
+    Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
+    ProcessedAttribute, Router, SinkSourceDirection, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY,
+    COORDINATES_KEY, ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -268,9 +268,19 @@ fn can_parse() {
         (0, Source::new(1, SinkSourceDirection::North, 0)),
         (1, Source::new(0, SinkSourceDirection::West, 1)),
     ]);
-    let expected_core_source_map = HashMap::from([
-        (1, HashMap::from([(SinkSourceDirection::North, vec![0])])),
-        (0, HashMap::from([(SinkSourceDirection::West, vec![1])])),
+    let expected_core_border_map = HashMap::from([
+        (
+            6,
+            HashMap::from([(SinkSourceDirection::West, BorderEntry::Sink(5))]),
+        ),
+        (
+            1,
+            HashMap::from([(SinkSourceDirection::North, BorderEntry::Source(0))]),
+        ),
+        (
+            0,
+            HashMap::from([(SinkSourceDirection::West, BorderEntry::Source(1))]),
+        ),
     ]);
 
     let expected_manycore = ManycoreSystem {
@@ -282,7 +292,7 @@ fn can_parse() {
         columns: 3,
         rows: 3,
         routing_algo: Some(String::from("RowFirst")),
-        borders: Borders::new(expected_sinks, expected_sources, expected_core_source_map),
+        borders: Borders::new(expected_sinks, expected_sources, expected_core_border_map),
         cores: Cores::new(expected_cores),
         task_graph: expected_graph,
         task_core_map: expected_task_core_map,
