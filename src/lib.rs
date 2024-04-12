@@ -108,6 +108,9 @@ impl ManycoreSystem {
         channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
         channel_attributes.insert_manual(BORDER_ROUTERS_KEY, AttributeType::Boolean);
 
+        // Core id validation tracker
+        let mut prev_id: i16 = -1;
+
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
         for i in 0..=last {
@@ -118,6 +121,25 @@ impl ManycoreSystem {
                 .ok_or(generation_error(
                     "Something went wrong inspecting Core data.".into(),
                 ))?;
+
+            // Validate IDs follow incrementing sequence starting from zero: 0 -> 1 -> 2 -> etc.
+            let validation_id = i16::from(*core.id());
+            if (validation_id - prev_id) != 1 {
+                return Err(generation_error(format!(
+                    "Core IDs must be incremental starting from 0{}",
+                    if prev_id > -1 {
+                        format!(
+                            ". Was expecting ID {}, got {}. Previously inspected core had ID {}.",
+                            prev_id + 1,
+                            validation_id,
+                            prev_id
+                        )
+                    } else {
+                        ".".to_string()
+                    }
+                )));
+            }
+            prev_id += 1;
 
             // task -> core map
             if let Some(task_id) = core.allocated_task().as_ref() {
