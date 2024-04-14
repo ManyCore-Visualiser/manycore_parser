@@ -63,9 +63,9 @@ pub struct ManycoreSystem {
     /// The system's cores.
     cores: Cores,
     /// Borders (edge routers).
-    #[serde(skip_serializing_if = "Borders::should_skip_serialize")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub", get_mut = "pub")]
-    borders: Borders,
+    borders: Option<Borders>,
     #[serde(skip)]
     #[getset(get = "pub", set = "pub", get_mut = "pub")]
     /// This is not part of the XML and is used in the routing logic. It maps a task ID (key) to the corresponding core ID (value, the core upon which the task is allocated to).
@@ -106,7 +106,6 @@ impl ManycoreSystem {
         core_attributes.insert_manual(COORDINATES_KEY, AttributeType::Coordinates);
         // Manually insert channel attributes that are not part of the "other_attributes" map.
         channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
-        channel_attributes.insert_manual(BORDER_ROUTERS_KEY, AttributeType::Boolean);
 
         // Core id validation tracker
         let mut prev_id: i16 = -1;
@@ -161,7 +160,12 @@ impl ManycoreSystem {
         manycore.task_core_map = task_core_map;
 
         // Populate core -> border map
-        manycore.borders_mut().compute_core_border_map();
+        if let Some(borders) = manycore.borders_mut() {
+            // Manually insert borders key in channel attributes
+            channel_attributes.insert_manual(BORDER_ROUTERS_KEY, AttributeType::Boolean);
+
+            borders.compute_core_border_map();
+        }
 
         manycore.configurable_attributes = ConfigurableAttributes::new(
             core_attributes,

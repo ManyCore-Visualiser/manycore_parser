@@ -292,7 +292,7 @@ fn can_parse() {
         columns: 3,
         rows: 3,
         routing_algo: Some(String::from("RowFirst")),
-        borders: Borders::new(expected_sinks, expected_sources, expected_core_border_map),
+        borders: Some(Borders::new(expected_sinks, expected_sources, expected_core_border_map)),
         cores: Cores::new(expected_cores),
         task_graph: expected_graph,
         task_core_map: expected_task_core_map,

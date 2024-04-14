@@ -90,7 +90,7 @@ impl ProcessedAttribute {
     }
 
     pub(crate) fn new(key: &String, _type: AttributeType) -> Self {
-        // We want to rename the routing algorithm display property to "Loads"
+        // We want to rename the routing algorithm display property to "Load"
         if key.eq(ROUTING_KEY) {
             return Self {
                 _type,

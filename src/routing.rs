@@ -113,38 +113,41 @@ impl ManycoreSystem {
         task_core_map: &HashMap<u16, usize>,
         task_id: u16,
         communication_cost: u16,
-        borders: &mut Borders,
+        borders: &mut Option<Borders>,
         cores: &'a Cores,
     ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
         match task_core_map.get(&task_id) {
             Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
-            None => {
-                if let Some(sink) = borders.sinks().get(&task_id) {
-                    let idx = sink.core_id();
+            None => match borders {
+                Some(borders) => {
+                    if let Some(sink) = borders.sinks().get(&task_id) {
+                        let idx = sink.core_id();
 
-                    Ok((
-                        cores.list().get(*idx).ok_or(no_core(idx))?,
-                        Some(sink.direction().clone()),
-                    ))
-                } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
-                    let idx = *source.core_id();
-                    source.add_to_load(communication_cost);
+                        Ok((
+                            cores.list().get(*idx).ok_or(no_core(idx))?,
+                            Some(sink.direction().clone()),
+                        ))
+                    } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
+                        let idx = *source.core_id();
+                        source.add_to_load(communication_cost);
 
-                    Ok((
-                        cores.list().get(idx).ok_or(no_core(&idx))?,
-                        Some(source.direction().clone()),
-                    ))
-                } else {
-                    Err(no_task(&task_id))
+                        Ok((
+                            cores.list().get(idx).ok_or(no_core(&idx))?,
+                            Some(source.direction().clone()),
+                        ))
+                    } else {
+                        Err(no_task(&task_id))
+                    }
                 }
-            }
+                None => Err(no_task(&task_id)),
+            },
         }
     }
 
     /// Calculates required routing information for the given task graph edge.
     fn calculate_edge_routing_information(
         cores: &Cores,
-        borders: &mut Borders,
+        borders: &mut Option<Borders>,
         task_core_map: &HashMap<u16, usize>,
         edge: &Edge,
         columns: &u8,
@@ -386,9 +389,11 @@ impl ManycoreSystem {
             }
         }
 
-        for e in task_graph.edges() {
-            if let Some(source) = borders.sources_mut().get_mut(e.from()) {
-                source.add_to_load(*e.communication_cost());
+        if let Some(borders) = borders {
+            for e in task_graph.edges() {
+                if let Some(source) = borders.sources_mut().get_mut(e.from()) {
+                    source.add_to_load(*e.communication_cost());
+                }
             }
         }
 
@@ -402,12 +407,12 @@ impl ManycoreSystem {
             .list_mut()
             .iter_mut()
             .for_each(|c| c.channels_mut().clear_loads());
-        self.borders_mut()
-            .sources_mut()
-            .iter_mut()
-            .for_each(|(_, source)| {
+
+        if let Some(borders) = self.borders_mut() {
+            borders.sources_mut().iter_mut().for_each(|(_, source)| {
                 source.clear_load();
             })
+        }
     }
 
     /// Performs routing according to the requested algorithm.

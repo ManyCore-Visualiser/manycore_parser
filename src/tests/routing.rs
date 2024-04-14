@@ -40,11 +40,25 @@ fn row_first_is_correct() {
     assert_eq!(20, get_load(&mut manycore, 6, Directions::East).unwrap());
     assert_eq!(
         20,
-        *manycore.borders().sources().get(&1).unwrap().current_load()
+        *manycore
+            .borders()
+            .as_ref()
+            .expect("Border routers expected in test input.")
+            .sources()
+            .get(&1)
+            .expect("Task 1 expected in test graph.")
+            .current_load()
     );
     assert_eq!(
         30,
-        *manycore.borders().sources().get(&0).unwrap().current_load()
+        *manycore
+            .borders()
+            .as_ref()
+            .expect("Border routers expected in test input.")
+            .sources()
+            .get(&0)
+            .expect("Task 0 expected in test graph.")
+            .current_load()
     );
 }
 
@@ -70,10 +84,24 @@ fn column_first_is_correct() {
     assert_eq!(50, get_load(&mut manycore, 4, Directions::North).unwrap());
     assert_eq!(
         20,
-        *manycore.borders().sources().get(&1).unwrap().current_load()
+        *manycore
+            .borders()
+            .as_ref()
+            .expect("Border routers expected in test input.")
+            .sources()
+            .get(&1)
+            .expect("Task 1 expected in test graph.")
+            .current_load()
     );
     assert_eq!(
         30,
-        *manycore.borders().sources().get(&0).unwrap().current_load()
+        *manycore
+            .borders()
+            .as_ref()
+            .expect("Border routers expected in test input.")
+            .sources()
+            .get(&0)
+            .expect("Task 0 expected in test graph.")
+            .current_load()
     );
 }

@@ -49,10 +49,6 @@ pub struct Borders {
 }
 
 impl Borders {
-    pub fn should_skip_serialize(&self) -> bool {
-        self.sinks.is_empty() || self.sources.is_empty()
-    }
-
     #[cfg(test)]
     pub fn new(
         sinks: BTreeMap<u16, Sink>,
