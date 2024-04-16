@@ -5,15 +5,31 @@ use serde::Serialize;
 
 use crate::{RoutingAlgorithms, ROUTING_KEY};
 
+#[cfg(doc)]
+use crate::{Channel, Core, Router};
+
+/// This trait is to be implemented by every object that is a representation of an XML element
+/// which constains arrbitrary attributes.
+/// Currently these are:
+/// * [`Core`]
+/// * [`Router`]
+/// * [`Channel`]
+///
+/// The trait can be used to pass above elements around without specifying the concrete struct.
+/// It allows for shared functionality, particulary when generating an SVG with `manycore_svg`.
 pub trait WithXMLAttributes {
     fn other_attributes(&self) -> &Option<BTreeMap<String, String>>;
     fn variant(&self) -> &'static str;
 }
 
+/// Similarly to [`WithXMLAttributes`], this trait is used to provide an abstraction
+/// over objects that have an id field.
 pub trait WithID<T> {
     fn id(&self) -> &T;
 }
 
+/// Enum to differentiate what kind of attribute this is. Used in SVG customisation.
+/// It is here rather than in `manycore_svg` as the type is determined on the `manycore_parser` side.
 #[derive(Serialize, Debug, PartialEq, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeType {
@@ -24,6 +40,7 @@ pub enum AttributeType {
     Routing,
 }
 
+/// Helper struct to provide a user friendly string of an attribute (`display` field )and its type (`_type` field).
 #[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct ProcessedAttribute {
     #[serde(rename = "type")]
@@ -32,6 +49,7 @@ pub struct ProcessedAttribute {
 }
 
 impl ProcessedAttribute {
+    /// Formats a map key into a user friendly string.
     fn format_display(key: &String) -> String {
         if key.len() == 0 {
             // TODO: Throw Error
@@ -89,6 +107,7 @@ impl ProcessedAttribute {
         result
     }
 
+    /// Creates a new instance of [`ProcessedAttribute`] forom the given parameters.
     pub(crate) fn new(key: &String, _type: AttributeType) -> Self {
         // We want to rename the routing algorithm display property to "Load"
         if key.eq(ROUTING_KEY) {
@@ -119,7 +138,8 @@ pub struct ConfigurableAttributes {
 }
 
 impl ConfigurableAttributes {
-    pub fn new(
+    /// Generates a new [`ConfigurableAttributes`] from the given parameters.
+    pub(crate) fn new(
         core: BTreeMap<String, ProcessedAttribute>,
         router: BTreeMap<String, ProcessedAttribute>,
         observed_algorithm: Option<String>,
@@ -136,8 +156,14 @@ impl ConfigurableAttributes {
     }
 }
 
-pub trait AttributesMap {
+/// A trait for convenient utilities used in [`ConfigurableAttributes`] generation.
+/// To be implemented for the map of choice (in [`ConfigurableAttributes`] case, a [`BTreeMap`]).
+pub(crate) trait AttributesMap {
+    /// Manually inserts an attribute into the map.
+    /// Typically used when the attribute cannot be derrived from [`WithXMLAttributes`].
     fn insert_manual(&mut self, key: &str, _type: AttributeType);
+
+    /// Inserts all attributes found on an element's `other_attributes` map.
     fn extend_from_element<T: WithXMLAttributes>(&mut self, element: &T);
 }
 
@@ -149,6 +175,7 @@ impl AttributesMap for BTreeMap<String, ProcessedAttribute> {
             ProcessedAttribute::new(&key_string, _type),
         );
     }
+
     fn extend_from_element<T: WithXMLAttributes>(&mut self, element: &T) {
         // Are there any attributes we can inspect?
         if let Some(other_attributes) = element.other_attributes() {

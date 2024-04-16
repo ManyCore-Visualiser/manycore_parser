@@ -3,6 +3,8 @@ use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, hash::Hash};
 
+/// Describes where in the matrix edge the core is located.
+/// Used to determine number of edge connections.
 pub enum EdgePosition {
     Top,
     TopLeft,
@@ -30,7 +32,7 @@ impl From<&EdgePosition> for Vec<SinkSourceDirection> {
     }
 }
 
-/// A system's core.
+/// Object representation of an XML `<Core>` element.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters, Setters, MutGetters)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
 pub struct Core {
@@ -59,7 +61,7 @@ pub struct Core {
 
 impl Core {
     #[cfg(test)]
-    /// Instantiates a new core.
+    /// Instantiates a new [`Core`] instance.
     pub fn new(
         id: u8,
         router: Router,
@@ -76,7 +78,7 @@ impl Core {
         }
     }
 
-    /// Utility to determmine if a core is on the edge
+    /// Utility to determine if a core is on the edge, and if so where.
     pub fn is_on_edge(&self, columns: u8, rows: u8) -> Option<EdgePosition> {
         let bl_bound = (rows - 1) * columns;
         if self.id % columns == 0 {
@@ -124,7 +126,7 @@ impl WithID<u8> for Core {
     }
 }
 
-/// List of cores in the system.
+/// Object representation of `<Cores>` attributes in input XML.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters, Clone)]
 #[getset(get = "pub", set = "pub", get_mut = "pub")]
 pub struct Cores {
@@ -133,6 +135,7 @@ pub struct Cores {
 }
 
 impl Cores {
+    #[cfg(test)]
     /// Instantiates a new Cores instance.
     pub fn new(list: Vec<Core>) -> Self {
         Self { list }

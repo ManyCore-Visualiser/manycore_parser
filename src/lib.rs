@@ -22,7 +22,6 @@ pub use crate::error::*;
 pub use crate::graph::*;
 pub use crate::router::*;
 pub use crate::routing::*;
-pub use crate::utils::*;
 pub use configurable_attributes::*;
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
@@ -34,7 +33,7 @@ pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
-/// This struct represents the many core system that was provided as input via XML.
+/// Object representation of a ManyCore System as provided in input XML file.
 pub struct ManycoreSystem {
     #[serde(rename = "@xmlns")]
     xmlns: String,
@@ -76,8 +75,9 @@ pub struct ManycoreSystem {
     configurable_attributes: ConfigurableAttributes,
 }
 
+/// Wrapper function to geneate a [`ManycoreErrorKind::GenerationError`].
 fn generation_error(reason: String) -> ManycoreError {
-    ManycoreError::new(error::ManycoreErrorKind::GenerationError(reason))
+    ManycoreError::new(ManycoreErrorKind::GenerationError(reason))
 }
 
 impl ManycoreSystem {
@@ -167,6 +167,7 @@ impl ManycoreSystem {
             borders.compute_core_border_map();
         }
 
+        // Instantiate configurable attributes
         manycore.configurable_attributes = ConfigurableAttributes::new(
             core_attributes,
             router_attributes,

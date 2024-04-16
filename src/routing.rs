@@ -16,7 +16,7 @@ pub enum RoutingAlgorithms {
 }
 
 /// Array used to expose supported algorithms as a configurable field.
-pub static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 3] = [
+pub(crate) static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 3] = [
     RoutingAlgorithms::Observed,
     RoutingAlgorithms::RowFirst,
     RoutingAlgorithms::ColumnFirst,
@@ -49,21 +49,24 @@ struct EdgeRoutingInformation {
     from: u16,
 }
 
+/// Enum to differentiate targets of routing packets.
 #[derive(Eq, Hash, PartialEq, Clone, Debug)]
 pub enum RoutingTarget {
     Core(usize),
     Sink(usize),
-    Source(u16),
+    Source(usize),
 }
 
-pub fn routing_error(reason: String) -> ManycoreError {
+/// Wapper function to generate [`ManycoreErrorKind::RoutingError`].
+pub(crate) fn routing_error(reason: String) -> ManycoreError {
     ManycoreError::new(ManycoreErrorKind::RoutingError(reason))
 }
 
+/// Wrapper function to generate a [`ManycoreErrorKind::RoutingError`] caused by not finding a [`Core`] having the requested ID.
 fn no_core(i: &usize) -> ManycoreError {
     routing_error(format!("Could not get a core with ID {}.", i))
 }
-
+/// Wrapper function to generate a [`ManycoreErrorKind::RoutingError`] caused by not finding a [`Task`] having the requested ID.
 fn no_task(i: &u16) -> ManycoreError {
     routing_error(format!(
         "Malformed TaskGraph: Task {} is not allocated on any core, sink or source.",
@@ -71,10 +74,12 @@ fn no_task(i: &u16) -> ManycoreError {
     ))
 }
 
-pub fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, ManycoreError> {
+/// Utility function to retrieve a core by ID. Wraps in [`Result`] for convenience.
+pub(crate) fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, ManycoreError> {
     cores.list_mut().get_mut(i).ok_or(no_core(&i))
 }
 
+/// Utility function to add routing data to the routing result map.
 fn add_to_ret(
     key: RoutingTarget,
     direction: Directions,
@@ -83,25 +88,37 @@ fn add_to_ret(
     ret.entry(key).or_insert(HashSet::new()).insert(direction);
 }
 
+/// Utility function to add borders routing information to the routing result map.
 fn handle_borders(
     cores: &mut Cores,
     ret: &mut HashMap<RoutingTarget, HashSet<Directions>>,
     eri: &EdgeRoutingInformation,
 ) -> Result<(), ManycoreError> {
+    // Was the task graph edge routed through a source?
     if let Some(source_direction) = eri.source_direction.as_ref() {
+        // If so, we'll want to display load of the source channel. Add to map.
         let direction = source_direction.into();
-        add_to_ret(RoutingTarget::Source(eri.from), direction, ret);
+        let start_idx = usize::from(eri.start_id);
+        add_to_ret(RoutingTarget::Source(start_idx), direction, ret);
     }
 
+    // Was the task graph edge rrouted through a sink?
     if let Some(sink_direction) = eri.sink_direction.as_ref() {
+        // If so, we'll want to display load of the sink channel. Add to map.
         let direction = sink_direction.into();
         let destination_idx = usize::from(eri.destination_id);
 
         add_to_ret(RoutingTarget::Sink(destination_idx), direction, ret);
 
+        // Unlike sources, sinks can receive packets from multiple tasks.
+        // Furthermoe, a sink incoming link is actually a core's outgoing channel.
+        // Cumulatively track the load on the channel.
+        // We do it here because sinks are not actually part of the inner
+        // algorithmically routable connections matrix.
+        // The routing algorithm will stop upon reaching the target core (column, row) pair.
         get_core(cores, destination_idx)?
             .channels_mut()
-            .add_to_cost(eri.communication_cost, direction)?;
+            .add_to_load(eri.communication_cost, direction)?;
     }
 
     Ok(())
@@ -117,10 +134,13 @@ impl ManycoreSystem {
         cores: &'a Cores,
     ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
         match task_core_map.get(&task_id) {
+            // Lucky base case, the task is allocated on a core.
             Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
             None => match borders {
+                // The task is hopefuly coming from a source or is allocated on a sink.
                 Some(borders) => {
                     if let Some(sink) = borders.sinks().get(&task_id) {
+                        // Task is on a sink
                         let idx = sink.core_id();
 
                         Ok((
@@ -128,7 +148,13 @@ impl ManycoreSystem {
                             Some(sink.direction().clone()),
                         ))
                     } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
+                        // Task is on a source
                         let idx = *source.core_id();
+
+                        // We cumulatively track outgoing load from this source.
+                        // We do it here because the source is not actually part of the inner
+                        // algorithmically routable connections matrix.
+                        // This allows to support multi-task source in the future.
                         source.add_to_load(communication_cost);
 
                         Ok((
@@ -136,9 +162,11 @@ impl ManycoreSystem {
                             Some(source.direction().clone()),
                         ))
                     } else {
+                        // The requested task is nowhere to be found. Task graph is invalid.
                         Err(no_task(&task_id))
                     }
                 }
+                // The requested task is nowhere to be found. Task graph is invalid.
                 None => Err(no_task(&task_id)),
             },
         }
@@ -153,6 +181,8 @@ impl ManycoreSystem {
         columns: &u8,
         rows: &u8,
     ) -> Result<EdgeRoutingInformation, ManycoreError> {
+        // Retrieve core upon which source task is mapped.
+        // Will take care of mapping onto core if coming from source.
         let (start, source) = ManycoreSystem::task_id_to_core(
             task_core_map,
             *edge.from(),
@@ -161,6 +191,8 @@ impl ManycoreSystem {
             cores,
         )?;
 
+        // Retrieve core upon which destination task is mapped.
+        // Will take care of mapping onto core if coming from sink.
         let (destination, sink) = ManycoreSystem::task_id_to_core(
             task_core_map,
             *edge.to(),
@@ -172,6 +204,7 @@ impl ManycoreSystem {
         let start_id = *start.id();
         let destination_id = *destination.id();
 
+        // Workout where are we and where do we want to go in inner matrix.
         let current_column = start_id % columns;
         let start_column = current_column.clone();
         let current_row = start_id / rows;
@@ -238,14 +271,14 @@ impl ManycoreSystem {
                         // Going up
                         add_to_ret(ret_key, Directions::North, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::North);
                         current_idx -= usize::from(*columns);
                         eri.current_row -= 1;
                     } else {
                         // Going down
                         add_to_ret(ret_key, Directions::South, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::South);
                         current_idx += usize::from(*columns);
                         eri.current_row += 1;
                     }
@@ -255,14 +288,14 @@ impl ManycoreSystem {
                         // Going left
                         add_to_ret(ret_key, Directions::West, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::West);
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
                         add_to_ret(ret_key, Directions::East, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::East);
                         current_idx += 1;
                         eri.current_column += 1;
                     }
@@ -323,14 +356,14 @@ impl ManycoreSystem {
                         // Going left
                         add_to_ret(ret_key, Directions::West, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::West);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::West);
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
                         add_to_ret(ret_key, Directions::East, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::East);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::East);
                         current_idx += 1;
                         eri.current_column += 1;
                     }
@@ -341,14 +374,14 @@ impl ManycoreSystem {
                         // Going up
                         add_to_ret(ret_key, Directions::North, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::North);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::North);
                         current_idx -= usize::from(*columns);
                         eri.current_row -= 1;
                     } else {
                         // Going down
                         add_to_ret(ret_key, Directions::South, &mut ret);
 
-                        let _ = channels.add_to_cost(eri.communication_cost, Directions::South);
+                        let _ = channels.add_to_load(eri.communication_cost, Directions::South);
                         current_idx += usize::from(*columns);
                         eri.current_row += 1;
                     }
@@ -376,6 +409,7 @@ impl ManycoreSystem {
         let mut ret: HashMap<RoutingTarget, HashSet<Directions>> = HashMap::new();
 
         let mut core;
+        // Copy all core loads over
         for i in 0..cores.list().len() {
             let ret_key = RoutingTarget::Core(i);
             core = get_core(cores, i)?;
@@ -384,15 +418,21 @@ impl ManycoreSystem {
                 if packets != 0 {
                     add_to_ret(ret_key.clone(), *direction, &mut ret);
 
-                    channel.add_to_cost(packets);
+                    channel.add_to_load(packets);
                 }
             }
         }
 
+        // Copy all source loads over
         if let Some(borders) = borders {
             for e in task_graph.edges() {
                 if let Some(source) = borders.sources_mut().get_mut(e.from()) {
                     source.add_to_load(*e.communication_cost());
+                    add_to_ret(
+                        RoutingTarget::Source(*source.core_id()),
+                        Directions::from(source.direction()),
+                        &mut ret,
+                    )
                 }
             }
         }
@@ -400,8 +440,8 @@ impl ManycoreSystem {
         Ok(ret)
     }
 
-    /// Clears all links loads.
-    fn clear_links(&mut self) {
+    /// Clears all channel loads.
+    fn clear_channels(&mut self) {
         // Zero out all links costs
         self.cores_mut()
             .list_mut()
@@ -420,7 +460,7 @@ impl ManycoreSystem {
         &mut self,
         algorithm: &RoutingAlgorithms,
     ) -> Result<HashMap<RoutingTarget, HashSet<Directions>>, ManycoreError> {
-        self.clear_links();
+        self.clear_channels();
 
         match algorithm {
             RoutingAlgorithms::ColumnFirst => self.column_first(),

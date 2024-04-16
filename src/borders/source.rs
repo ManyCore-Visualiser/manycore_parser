@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::SinkSourceDirection;
 
+/// Object representation of a `<Source>` element as provided in XML input file.
 #[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone, Eq, MutGetters)]
 #[getset(get = "pub")]
 pub struct Source {
@@ -19,11 +20,14 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn add_to_load(&mut self, load: u16) {
+    /// Adds to the current load of a [`Source`]. [`Source`] channels are "fictional",
+    /// they are not part of the input XML.
+    pub(crate) fn add_to_load(&mut self, load: u16) {
         self.current_load += load;
     }
 
-    pub fn clear_load(&mut self) {
+    /// Clears the curent load of a [`Source`] instance.
+    pub(crate) fn clear_load(&mut self) {
         self.current_load = 0;
     }
 }
@@ -48,7 +52,8 @@ impl PartialOrd for Source {
 
 #[cfg(test)]
 impl Source {
-    pub fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
+    /// Generates a new [`Source`] instance according to provided parameters.
+    pub(crate) fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
         Self {
             core_id,
             direction,

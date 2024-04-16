@@ -1,7 +1,8 @@
 use std::{collections::BTreeMap, fmt::Display};
 
-use getset::Getters;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use getset::{Getters, MutGetters};
+use manycore_utils::{deserialize_btree_vector, serialise_btreemap, BTreeVector};
+use serde::{Deserialize, Serialize};
 
 use crate::error::ManycoreError;
 use crate::utils::attrs::deserialize_attrs;
@@ -54,7 +55,7 @@ impl TryFrom<&str> for Directions {
     }
 }
 
-/// A channel.
+/// Object representation of a `<Channel>` element as provided in XML input.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
 pub struct Channel {
     /// The channel's direction.
@@ -82,8 +83,9 @@ pub struct Channel {
 }
 
 impl Channel {
-    /// Instantiates a new channel.
-    pub fn new(
+    #[cfg(test)]
+    /// Instantiates a new [`Channel`] instance.
+    pub(crate) fn new(
         direction: Directions,
         actual_com_cost: u16,
         bandwidth: u16,
@@ -98,8 +100,15 @@ impl Channel {
         }
     }
 
-    pub fn add_to_cost(&mut self, cost: u16) {
+    /// Adds to the current load of a [`Channel`].
+    pub(crate) fn add_to_load(&mut self, cost: u16) {
         self.current_load += cost;
+    }
+}
+
+impl BTreeVector<Directions> for Channel {
+    fn key(&self) -> Directions {
+        self.direction
     }
 }
 
@@ -113,60 +122,39 @@ impl WithXMLAttributes for Channel {
     }
 }
 
-/// A router's channels map.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters)]
+/// Object representation of a `<Channels>` element as provided in XML input.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Getters, MutGetters)]
 pub struct Channels {
-    /// A map of channels that uses direction as key and the channel itself as value.
+    /// A map of channels that uses direction as key and the [`Channel`] itself as value.
     #[serde(
         rename = "Channel",
-        deserialize_with = "Channels::deserialize_channels",
-        serialize_with = "Channels::serialize_channels"
+        deserialize_with = "deserialize_btree_vector",
+        serialize_with = "serialise_btreemap"
     )]
-    #[getset(get = "pub")]
+    #[getset(get = "pub", get_mut = "pub")]
     channel: BTreeMap<Directions, Channel>,
 }
 
 impl Channels {
+    #[cfg(test)]
     /// Instantiates a new Channels instance.
-    pub fn new(channel: BTreeMap<Directions, Channel>) -> Self {
+    pub(crate) fn new(channel: BTreeMap<Directions, Channel>) -> Self {
         Self { channel }
     }
 
-    /// Helper function that deserialises channels vector as a BTreeMap.
-    fn deserialize_channels<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<BTreeMap<Directions, Channel>, D::Error> {
-        let channel_vec: Vec<Channel> = Deserialize::deserialize(deserializer)?;
-
-        let mut ret = BTreeMap::new();
-
-        for channel in channel_vec {
-            ret.insert(channel.direction, channel);
-        }
-
-        Ok(ret)
-    }
-
-    /// Helper function to serialise channels BTreeMap as Vector.
-    fn serialize_channels<S: Serializer>(
-        channel: &BTreeMap<Directions, Channel>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        serializer.collect_seq(channel.values())
-    }
-
-    pub fn channel_mut(&mut self) -> &mut BTreeMap<Directions, Channel> {
-        &mut self.channel
-    }
-
-    pub fn clear_loads(&mut self) {
+    /// Clears all [`Channel`] loads within the provided [`Channels`] instance.
+    pub(crate) fn clear_loads(&mut self) {
         self.channel
             .iter_mut()
             .for_each(|(_, c)| c.current_load = 0);
     }
 
-    /// Adds to the channel's load.
-    pub fn add_to_cost(&mut self, cost: u16, direction: Directions) -> Result<(), ManycoreError> {
+    /// Adds to the [`Channel`]'s load in the given [`Directions`] within the provided [`Channels`] instance.
+    pub(crate) fn add_to_load(
+        &mut self,
+        cost: u16,
+        direction: Directions,
+    ) -> Result<(), ManycoreError> {
         self.channel
             .get_mut(&direction)
             .ok_or(ManycoreError::new(
@@ -175,7 +163,7 @@ impl Channels {
                     direction
                 )),
             ))?
-            .current_load += u16::from(cost);
+            .add_to_load(u16::from(cost));
 
         Ok(())
     }

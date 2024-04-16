@@ -6,12 +6,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::Directions;
 
-use self::sink::Sink;
-use self::source::Source;
+pub use self::sink::Sink;
+pub use self::source::Source;
 
-pub mod sink;
-pub mod source;
+mod sink;
+mod source;
 
+/// Enum to describe a [`Sink`] or [`Source`] direction.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum SinkSourceDirection {
     North,
@@ -20,12 +21,17 @@ pub enum SinkSourceDirection {
     West,
 }
 
+/// Enum to differentiate an entry in [`Borders`]' core_border_map`.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum BorderEntry {
     Source(u16),
     Sink(u16),
 }
 
+#[cfg(doc)]
+use crate::Core;
+
+/// Object representation of `<Borders>` as provided in XML input file.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct Borders {
@@ -43,6 +49,7 @@ pub struct Borders {
         deserialize_with = "deserialize_btree_vector"
     )]
     sinks: BTreeMap<u16, Sink>,
+    /// A map to retrieve border elements connected to a certain [`Core`].
     #[serde(skip)]
     #[getset(get = "pub")]
     core_border_map: HashMap<usize, HashMap<SinkSourceDirection, BorderEntry>>,
@@ -50,7 +57,8 @@ pub struct Borders {
 
 impl Borders {
     #[cfg(test)]
-    pub fn new(
+    /// Creates a new instance of [`Borders`] according to the prrovided parameters.
+    pub(crate) fn new(
         sinks: BTreeMap<u16, Sink>,
         sources: BTreeMap<u16, Source>,
         core_border_map: HashMap<usize, HashMap<SinkSourceDirection, BorderEntry>>,
@@ -62,7 +70,8 @@ impl Borders {
         }
     }
 
-    pub fn compute_core_border_map(&mut self) {
+    /// Populates the `core_border_map` by inspecting each [`Source`] and [`Sink`] within a [`Borders`] instance.
+    pub(crate) fn compute_core_border_map(&mut self) {
         for source in self.sources.values() {
             self.core_border_map
                 .entry(*source.core_id())

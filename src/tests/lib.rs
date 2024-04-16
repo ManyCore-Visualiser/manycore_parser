@@ -6,7 +6,7 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    sink::Sink, source::Source, AttributeType, AttributesMap, BorderEntry, Borders, Channel,
+    Sink, Source, AttributeType, AttributesMap, BorderEntry, Borders, Channel,
     Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
     ProcessedAttribute, Router, SinkSourceDirection, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY,
     COORDINATES_KEY, ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,

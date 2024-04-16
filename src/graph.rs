@@ -1,7 +1,7 @@
 use getset::{Getters, MutGetters};
 use serde::{Deserialize, Serialize};
 
-/// A Taskgraph edge.
+/// Object representation of an `<Edge>` element in input XML.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Clone)]
 #[serde(rename_all = "PascalCase")]
 #[getset(get = "pub")]
@@ -18,8 +18,9 @@ pub struct Edge {
 }
 
 impl Edge {
+    #[cfg(test)]
     /// Instantiates a new edge.
-    pub fn new(from: u16, to: u16, communication_cost: u16) -> Self {
+    pub(crate) fn new(from: u16, to: u16, communication_cost: u16) -> Self {
         Self {
             from,
             to,
@@ -28,7 +29,7 @@ impl Edge {
     }
 }
 
-/// A Taskgraph task.
+/// Object representation of a `<Task>` element in input XML.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Task {
     #[serde(rename = "@id")]
@@ -38,8 +39,9 @@ pub struct Task {
 }
 
 impl Task {
+    #[cfg(test)]
     /// Instantiates a new task.
-    pub fn new(id: u16, computation_cost: u8) -> Self {
+    pub(crate) fn new(id: u16, computation_cost: u8) -> Self {
         Self {
             id,
             computation_cost,
@@ -47,7 +49,7 @@ impl Task {
     }
 }
 
-/// The system's Taskgraph.
+/// Object representation of `<TaskGrraph>` element in input XML.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters, Clone)]
 pub struct TaskGraph {
     /// Vector of tasks in the graph (graph nodes).
@@ -60,8 +62,9 @@ pub struct TaskGraph {
 }
 
 impl TaskGraph {
+    #[cfg(test)]
     /// Instantiates a new Taskgraph.
-    pub fn new(tasks: Vec<Task>, edges: Vec<Edge>) -> Self {
+    pub(crate) fn new(tasks: Vec<Task>, edges: Vec<Edge>) -> Self {
         Self { tasks, edges }
     }
 }

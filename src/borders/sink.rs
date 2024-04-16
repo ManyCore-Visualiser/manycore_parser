@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::SinkSourceDirection;
 
+/// Object representation of a `<Sink>` element as provided in XML input file.
 #[derive(Serialize, Deserialize, Getters, Debug, PartialEq, Clone, Eq)]
 #[getset(get = "pub")]
 pub struct Sink {
@@ -35,7 +36,8 @@ impl PartialOrd for Sink {
 
 #[cfg(test)]
 impl Sink {
-    pub fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
+    /// Generates a new [`Sink`] instance accorrding to provided parameters.
+    pub(crate) fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
         Self {
             core_id,
             direction,

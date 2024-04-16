@@ -2,13 +2,17 @@ use std::collections::BTreeMap;
 
 use crate::{
     error::{ManycoreError, ManycoreErrorKind},
-    Core, Directions, ManycoreSystem, WithID, WithXMLAttributes,
+    Core, Directions, ManycoreSystem, WithID, WithXMLAttributes, ID_KEY,
 };
 
+static TASK_KEY: &'static str = "@allocated_task";
+
 impl ManycoreSystem {
+    /// Wrapper to generate an [`InfoError`][ManycoreErrorKind::InfoError].
     fn info_error(&self, reason: &'static str) -> ManycoreError {
         ManycoreError::new(ManycoreErrorKind::InfoError(reason))
     }
+
     /// Gets all available info for specific core or router.
     /// group_id looks something like "r1" or "c20", where r (router) and c (core) symbolise the variant,
     /// and the number is the element's index.
@@ -20,6 +24,7 @@ impl ManycoreSystem {
             return Err(self.info_error("Empty group_id."));
         };
 
+        // Derive group individual information parts from group_id
         let group_split = group_id.split("_").collect::<Vec<&str>>();
 
         let mut variant_chars = group_split[0].chars();
@@ -46,10 +51,10 @@ impl ManycoreSystem {
         // id and allocated_task are not part of the core "other_attributes" field so we shall
         // add them manually.
         let insert_core_default = |mut tree: BTreeMap<String, String>| {
-            tree.insert("@id".into(), core.id().to_string());
+            tree.insert(ID_KEY.into(), core.id().to_string());
 
             if let Some(task_id) = core.allocated_task() {
-                tree.insert("@allocated_task".into(), task_id.to_string());
+                tree.insert(TASK_KEY.into(), task_id.to_string());
             }
 
             tree

@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{utils, WithID, WithXMLAttributes};
 
-/// A core's router.
+#[cfg(doc)]
+use crate::Core;
+
+/// Object representation of a [`Core`]'s router.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Setters)]
 pub struct Router {
     /// The associated core id (not part of XML).
@@ -22,7 +25,8 @@ pub struct Router {
 }
 
 impl Router {
-    /// Instantiates a new Router.
+    #[cfg(test)]
+    /// Instantiates a new [`Router`] instance.
     pub fn new(id: u8, other_attributes: Option<BTreeMap<String, String>>) -> Self {
         Self {
             id,
