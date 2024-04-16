@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +48,7 @@ struct EdgeRoutingInformation {
 }
 
 /// Enum to differentiate targets of routing packets.
-#[derive(Eq, Hash, PartialEq, Clone, Debug)]
+#[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]
 pub enum RoutingTarget {
     CoreSink,
     Source,
@@ -77,14 +77,14 @@ pub(crate) fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, Manycor
 }
 
 /// Type of a successfully genereated routing result map.
-pub type RoutingMap = HashMap<u8, HashMap<RoutingTarget, HashSet<Directions>>>;
+pub type RoutingMap = HashMap<u8, BTreeMap<RoutingTarget, BTreeSet<Directions>>>;
 
 /// Utility function to add routing data to the routing result map.
 fn add_to_ret(key: u8, target: RoutingTarget, direction: Directions, ret: &mut RoutingMap) {
     ret.entry(key)
-        .or_insert(HashMap::with_capacity(3))
+        .or_insert(BTreeMap::default())
         .entry(target)
-        .or_insert(HashSet::default())
+        .or_insert(BTreeSet::default())
         .insert(direction);
 }
 
