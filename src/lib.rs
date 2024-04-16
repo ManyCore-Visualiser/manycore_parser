@@ -113,6 +113,9 @@ impl ManycoreSystem {
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
         for i in 0..=last {
+            let columns = manycore.columns;
+            let rows = manycore.rows;
+
             let core = manycore
                 .cores_mut()
                 .list_mut()
@@ -139,6 +142,9 @@ impl ManycoreSystem {
                 )));
             }
             prev_id += 1;
+
+            // Matrix edge
+            core.populate_matrix_edge(columns, rows);
 
             // task -> core map
             if let Some(task_id) = core.allocated_task().as_ref() {

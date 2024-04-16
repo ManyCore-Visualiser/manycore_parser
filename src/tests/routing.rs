@@ -19,6 +19,22 @@ fn get_load(
         .current_load())
 }
 
+#[cfg(test)]
+fn get_source_load(
+    manycore: &mut ManycoreSystem,
+    id: usize,
+    direction: Directions,
+) -> Result<u16, ManycoreError> {
+    Ok(*get_core(manycore.cores_mut(), id)?
+        .source_loads()
+        .as_ref()
+        .ok_or(routing_error(format!("Core {id} has no source loads")))?
+        .get(&direction)
+        .ok_or(routing_error(format!(
+            "Core {id} has no {direction} source channel."
+        )))?)
+}
+
 #[test]
 fn row_first_is_correct() {
     let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
@@ -40,25 +56,11 @@ fn row_first_is_correct() {
     assert_eq!(20, get_load(&mut manycore, 6, Directions::East).unwrap());
     assert_eq!(
         20,
-        *manycore
-            .borders()
-            .as_ref()
-            .expect("Border routers expected in test input.")
-            .sources()
-            .get(&1)
-            .expect("Task 1 expected in test graph.")
-            .current_load()
+        get_source_load(&mut manycore, 0, Directions::West).unwrap()
     );
     assert_eq!(
         30,
-        *manycore
-            .borders()
-            .as_ref()
-            .expect("Border routers expected in test input.")
-            .sources()
-            .get(&0)
-            .expect("Task 0 expected in test graph.")
-            .current_load()
+        get_source_load(&mut manycore, 1, Directions::North).unwrap()
     );
 }
 
@@ -84,24 +86,10 @@ fn column_first_is_correct() {
     assert_eq!(50, get_load(&mut manycore, 4, Directions::North).unwrap());
     assert_eq!(
         20,
-        *manycore
-            .borders()
-            .as_ref()
-            .expect("Border routers expected in test input.")
-            .sources()
-            .get(&1)
-            .expect("Task 1 expected in test graph.")
-            .current_load()
+        get_source_load(&mut manycore, 0, Directions::West).unwrap()
     );
     assert_eq!(
         30,
-        *manycore
-            .borders()
-            .as_ref()
-            .expect("Border routers expected in test input.")
-            .sources()
-            .get(&0)
-            .expect("Task 0 expected in test graph.")
-            .current_load()
+        get_source_load(&mut manycore, 1, Directions::North).unwrap()
     );
 }

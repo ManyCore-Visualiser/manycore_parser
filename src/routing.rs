@@ -45,8 +45,6 @@ struct EdgeRoutingInformation {
     source_direction: Option<SinkSourceDirection>,
     /// The sink direction, if any.
     sink_direction: Option<SinkSourceDirection>,
-    /// The source task id
-    from: u16,
 }
 
 /// Enum to differentiate targets of routing packets.
@@ -99,7 +97,12 @@ fn handle_borders(
         // If so, we'll want to display load of the source channel. Add to map.
         let direction = source_direction.into();
         let start_idx = usize::from(eri.start_id);
+
         add_to_ret(RoutingTarget::Source(start_idx), direction, ret);
+
+        // Output connections from sources are not part of the input XML.
+        // We must cumulatively track the load here.
+        get_core(cores, start_idx)?.add_source_load(eri.communication_cost, &direction)?;
     }
 
     // Was the task graph edge rrouted through a sink?
@@ -110,8 +113,7 @@ fn handle_borders(
 
         add_to_ret(RoutingTarget::Sink(destination_idx), direction, ret);
 
-        // Unlike sources, sinks can receive packets from multiple tasks.
-        // Furthermoe, a sink incoming link is actually a core's outgoing channel.
+        // A sink incoming link is actually a core's outgoing channel.
         // Cumulatively track the load on the channel.
         // We do it here because sinks are not actually part of the inner
         // algorithmically routable connections matrix.
@@ -129,7 +131,6 @@ impl ManycoreSystem {
     fn task_id_to_core<'a>(
         task_core_map: &HashMap<u16, usize>,
         task_id: u16,
-        communication_cost: u16,
         borders: &mut Option<Borders>,
         cores: &'a Cores,
     ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
@@ -150,12 +151,6 @@ impl ManycoreSystem {
                     } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
                         // Task is on a source
                         let idx = *source.core_id();
-
-                        // We cumulatively track outgoing load from this source.
-                        // We do it here because the source is not actually part of the inner
-                        // algorithmically routable connections matrix.
-                        // This allows to support multi-task source in the future.
-                        source.add_to_load(communication_cost);
 
                         Ok((
                             cores.list().get(idx).ok_or(no_core(&idx))?,
@@ -183,23 +178,13 @@ impl ManycoreSystem {
     ) -> Result<EdgeRoutingInformation, ManycoreError> {
         // Retrieve core upon which source task is mapped.
         // Will take care of mapping onto core if coming from source.
-        let (start, source) = ManycoreSystem::task_id_to_core(
-            task_core_map,
-            *edge.from(),
-            *edge.communication_cost(),
-            borders,
-            cores,
-        )?;
+        let (start, source) =
+            ManycoreSystem::task_id_to_core(task_core_map, *edge.from(), borders, cores)?;
 
         // Retrieve core upon which destination task is mapped.
         // Will take care of mapping onto core if coming from sink.
-        let (destination, sink) = ManycoreSystem::task_id_to_core(
-            task_core_map,
-            *edge.to(),
-            *edge.communication_cost(),
-            borders,
-            cores,
-        )?;
+        let (destination, sink) =
+            ManycoreSystem::task_id_to_core(task_core_map, *edge.to(), borders, cores)?;
 
         let start_id = *start.id();
         let destination_id = *destination.id();
@@ -222,7 +207,6 @@ impl ManycoreSystem {
             communication_cost: *edge.communication_cost(),
             source_direction: source,
             sink_direction: sink,
-            from: *edge.from(),
         })
     }
 
@@ -427,12 +411,16 @@ impl ManycoreSystem {
         if let Some(borders) = borders {
             for e in task_graph.edges() {
                 if let Some(source) = borders.sources_mut().get_mut(e.from()) {
-                    source.add_to_load(*e.communication_cost());
+                    let direction = Directions::from(source.direction());
+
+                    get_core(cores, *source.core_id())?
+                        .add_source_load(*e.communication_cost(), &direction)?;
+
                     add_to_ret(
                         RoutingTarget::Source(*source.core_id()),
-                        Directions::from(source.direction()),
+                        direction,
                         &mut ret,
-                    )
+                    );
                 }
             }
         }
@@ -443,16 +431,12 @@ impl ManycoreSystem {
     /// Clears all channel loads.
     fn clear_channels(&mut self) {
         // Zero out all links costs
-        self.cores_mut()
-            .list_mut()
-            .iter_mut()
-            .for_each(|c| c.channels_mut().clear_loads());
-
-        if let Some(borders) = self.borders_mut() {
-            borders.sources_mut().iter_mut().for_each(|(_, source)| {
-                source.clear_load();
-            })
-        }
+        self.cores_mut().list_mut().iter_mut().for_each(|c| {
+            // Channel loads
+            c.channels_mut().clear_loads();
+            // Source loads
+            c.clear_source_loads();
+        });
     }
 
     /// Performs routing according to the requested algorithm.

@@ -6,10 +6,10 @@ use std::{
 
 #[cfg(test)]
 use crate::{
-    Sink, Source, AttributeType, AttributesMap, BorderEntry, Borders, Channel,
-    Channels, ConfigurableAttributes, Core, Cores, Directions, Edge, ManycoreSystem,
-    ProcessedAttribute, Router, SinkSourceDirection, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY,
-    COORDINATES_KEY, ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
+    AttributeType, AttributesMap, BorderEntry, Borders, Channel, Channels, ConfigurableAttributes,
+    Core, Cores, Directions, Edge, ManycoreSystem, ProcessedAttribute, Router, Sink,
+    SinkSourceDirection, Source, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY,
+    ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
 };
 
 #[cfg(test)]
@@ -93,9 +93,14 @@ fn can_parse() {
         ])),
     );
 
+    let expected_columns = 3;
+    let expected_rows = 3;
+
     let expected_cores = vec![
         Core::new(
             0,
+            expected_columns,
+            expected_rows,
             expected_router.clone(),
             None,
             expected_channels.clone(),
@@ -108,6 +113,8 @@ fn can_parse() {
         ),
         Core::new(
             1,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             Some(3),
             expected_channels.clone(),
@@ -120,6 +127,8 @@ fn can_parse() {
         ),
         Core::new(
             2,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             None,
             expected_channels.clone(),
@@ -132,6 +141,8 @@ fn can_parse() {
         ),
         Core::new(
             3,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             None,
             expected_channels.clone(),
@@ -144,6 +155,8 @@ fn can_parse() {
         ),
         Core::new(
             4,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             None,
             expected_channels.clone(),
@@ -156,6 +169,8 @@ fn can_parse() {
         ),
         Core::new(
             5,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             Some(4),
             expected_channels.clone(),
@@ -168,6 +183,8 @@ fn can_parse() {
         ),
         Core::new(
             6,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             None,
             expected_channels.clone(),
@@ -180,6 +197,8 @@ fn can_parse() {
         ),
         Core::new(
             7,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             Some(2),
             expected_channels.clone(),
@@ -192,6 +211,8 @@ fn can_parse() {
         ),
         Core::new(
             8,
+            expected_columns,
+            expected_rows,
             expected_router.clone_increment(),
             None,
             expected_channels.clone(),
@@ -289,8 +310,8 @@ fn can_parse() {
         ),
         xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
         xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/405336e08936e8ac19d5331603796c5bf928657e/manycore_schema.xsd"),
-        columns: 3,
-        rows: 3,
+        columns: expected_columns,
+        rows: expected_rows,
         routing_algo: Some(String::from("RowFirst")),
         borders: Some(Borders::new(expected_sinks, expected_sources, expected_core_border_map)),
         cores: Cores::new(expected_cores),
