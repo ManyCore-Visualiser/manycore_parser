@@ -47,11 +47,11 @@ struct EdgeRoutingInformation {
     sink_direction: Option<SinkSourceDirection>,
 }
 
-/// Enum to differentiate targets of routing packets.
+/// Enum to differentiate type of routing packets.
 #[derive(Eq, Hash, PartialEq, Clone, Debug, PartialOrd, Ord)]
-pub enum RoutingTarget {
-    CoreSink,
-    Source,
+pub enum RoutingType {
+    OutputChannel,
+    SourceChannel,
 }
 
 /// Wapper function to generate [`ManycoreErrorKind::RoutingError`].
@@ -77,13 +77,13 @@ pub(crate) fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, Manycor
 }
 
 /// Type of a successfully genereated routing result map.
-pub type RoutingMap = HashMap<u8, BTreeMap<RoutingTarget, BTreeSet<Directions>>>;
+pub type RoutingMap = HashMap<u8, BTreeMap<RoutingType, BTreeSet<Directions>>>;
 
 /// Utility function to add routing data to the routing result map.
-fn add_to_ret(key: u8, target: RoutingTarget, direction: Directions, ret: &mut RoutingMap) {
+fn add_to_ret(key: u8, routing_type: RoutingType, direction: Directions, ret: &mut RoutingMap) {
     ret.entry(key)
         .or_insert(BTreeMap::default())
-        .entry(target)
+        .entry(routing_type)
         .or_insert(BTreeSet::default())
         .insert(direction);
 }
@@ -100,7 +100,7 @@ fn handle_borders(
         let direction = source_direction.into();
         let start_idx = usize::from(eri.start_id);
 
-        add_to_ret(eri.start_id, RoutingTarget::Source, direction, ret);
+        add_to_ret(eri.start_id, RoutingType::SourceChannel, direction, ret);
 
         // Output connections from sources are not part of the input XML.
         // We must cumulatively track the load here.
@@ -113,7 +113,7 @@ fn handle_borders(
         let direction = sink_direction.into();
         let destination_idx = usize::from(eri.destination_id);
 
-        add_to_ret(eri.destination_id, RoutingTarget::CoreSink, direction, ret);
+        add_to_ret(eri.destination_id, RoutingType::OutputChannel, direction, ret);
 
         // A sink incoming link is actually a core's outgoing channel.
         // Cumulatively track the load on the channel.
@@ -256,7 +256,7 @@ impl ManycoreSystem {
                         // Going up
                         add_to_ret(
                             core_id,
-                            RoutingTarget::CoreSink,
+                            RoutingType::OutputChannel,
                             Directions::North,
                             &mut ret,
                         );
@@ -268,7 +268,7 @@ impl ManycoreSystem {
                         // Going down
                         add_to_ret(
                             core_id,
-                            RoutingTarget::CoreSink,
+                            RoutingType::OutputChannel,
                             Directions::South,
                             &mut ret,
                         );
@@ -281,14 +281,14 @@ impl ManycoreSystem {
                     // Then column
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(core_id, RoutingTarget::CoreSink, Directions::West, &mut ret);
+                        add_to_ret(core_id, RoutingType::OutputChannel, Directions::West, &mut ret);
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::West)?;
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(core_id, RoutingTarget::CoreSink, Directions::East, &mut ret);
+                        add_to_ret(core_id, RoutingType::OutputChannel, Directions::East, &mut ret);
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::East)?;
                         current_idx += 1;
@@ -346,14 +346,14 @@ impl ManycoreSystem {
                     // Column first
                     if eri.start_column > eri.destination_column {
                         // Going left
-                        add_to_ret(core_id, RoutingTarget::CoreSink, Directions::West, &mut ret);
+                        add_to_ret(core_id, RoutingType::OutputChannel, Directions::West, &mut ret);
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::West)?;
                         current_idx -= 1;
                         eri.current_column -= 1;
                     } else {
                         // Going right
-                        add_to_ret(core_id, RoutingTarget::CoreSink, Directions::East, &mut ret);
+                        add_to_ret(core_id, RoutingType::OutputChannel, Directions::East, &mut ret);
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::East)?;
                         current_idx += 1;
@@ -366,7 +366,7 @@ impl ManycoreSystem {
                         // Going up
                         add_to_ret(
                             core_id,
-                            RoutingTarget::CoreSink,
+                            RoutingType::OutputChannel,
                             Directions::North,
                             &mut ret,
                         );
@@ -378,7 +378,7 @@ impl ManycoreSystem {
                         // Going down
                         add_to_ret(
                             core_id,
-                            RoutingTarget::CoreSink,
+                            RoutingType::OutputChannel,
                             Directions::South,
                             &mut ret,
                         );
@@ -416,7 +416,7 @@ impl ManycoreSystem {
             for (direction, channel) in core.channels_mut().channel_mut() {
                 let packets = *channel.actual_com_cost();
                 if packets != 0 {
-                    add_to_ret(core_id, RoutingTarget::CoreSink, *direction, &mut ret);
+                    add_to_ret(core_id, RoutingType::OutputChannel, *direction, &mut ret);
 
                     channel.add_to_load(packets);
                 }
@@ -432,7 +432,7 @@ impl ManycoreSystem {
                     let core = get_core(cores, *source.core_id())?;
                     core.add_source_load(*e.communication_cost(), &direction)?;
 
-                    add_to_ret(*core.id(), RoutingTarget::Source, direction, &mut ret);
+                    add_to_ret(*core.id(), RoutingType::SourceChannel, direction, &mut ret);
                 }
             }
         }
