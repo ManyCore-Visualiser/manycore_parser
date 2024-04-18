@@ -4,7 +4,10 @@ use crate::{
 };
 use getset::{Getters, MutGetters, Setters};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, hash::Hash};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    hash::Hash,
+};
 
 /// Describes where in the matrix edge the core is located.
 /// Used to determine number of edge connections.
@@ -33,6 +36,47 @@ impl From<&EdgePosition> for Vec<SinkSourceDirection> {
             EdgePosition::TopLeft => vec![North, West],
             EdgePosition::TopRight => vec![North, East],
         }
+    }
+}
+
+impl From<&EdgePosition> for BTreeSet<&Directions> {
+    fn from(position: &EdgePosition) -> Self {
+        use Directions::*;
+
+        let mut ret: BTreeSet<&Directions> = BTreeSet::new();
+
+        match position {
+            EdgePosition::Bottom => {
+                ret.insert(&South);
+            }
+            EdgePosition::BottomLeft => {
+                ret.insert(&South);
+                ret.insert(&West);
+            }
+            EdgePosition::BottomRight => {
+                ret.insert(&South);
+                ret.insert(&East);
+            }
+            EdgePosition::Left => {
+                ret.insert(&West);
+            }
+            EdgePosition::Right => {
+                ret.insert(&East);
+            }
+            EdgePosition::Top => {
+                ret.insert(&North);
+            }
+            EdgePosition::TopLeft => {
+                ret.insert(&North);
+                ret.insert(&West);
+            }
+            EdgePosition::TopRight => {
+                ret.insert(&North);
+                ret.insert(&East);
+            }
+        };
+
+        ret
     }
 }
 
