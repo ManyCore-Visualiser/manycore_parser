@@ -286,8 +286,8 @@ fn can_parse() {
 
     let expected_sinks = BTreeMap::from([(5, Sink::new(6, SinkSourceDirection::West, 5))]);
     let expected_sources = BTreeMap::from([
-        (0, Source::new(1, SinkSourceDirection::North, 0)),
-        (1, Source::new(0, SinkSourceDirection::West, 1)),
+        (0, Source::new(1, SinkSourceDirection::North, 0, Some(10))),
+        (1, Source::new(0, SinkSourceDirection::West, 1, None)),
     ]);
     let expected_core_border_map = HashMap::from([
         (
@@ -309,7 +309,7 @@ fn can_parse() {
             "https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems",
         ),
         xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
-        xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/405336e08936e8ac19d5331603796c5bf928657e/manycore_schema.xsd"),
+        xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/3e0d9d40ecead18fe3967b831160edd3463908d1/manycore_schema.xsd"),
         columns: expected_columns,
         rows: expected_rows,
         routing_algo: Some(String::from("RowFirst")),
@@ -331,10 +331,17 @@ fn can_serialize() {
     let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
         .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
 
-    let res = quick_xml::se::to_string(&manycore).expect("Could not serialize ManyCore");
+    let res = String::try_from(&manycore).expect("Could not serialize ManyCore");
 
     let expected = read_to_string("tests/serialized.xml")
         .expect("Could not read input test file \"tests/serialized.xml\"");
 
     assert_eq!(res, expected)
+    // println!("{res}")
+}
+
+#[test]
+fn can_validate() {
+    assert!(ManycoreSystem::parse_file("tests/Validation0.xml").is_err());
+    assert!(ManycoreSystem::parse_file("tests/Validation1.xml").is_err())
 }

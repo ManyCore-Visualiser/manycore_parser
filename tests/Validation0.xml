@@ -5,7 +5,7 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/3e0d9d40ecead18fe3967b831160edd3463908d1/manycore_schema.xsd"
     rows="3"
-    columns="3"
+    columns="2"
     routingAlgo="RowFirst"
 >
 

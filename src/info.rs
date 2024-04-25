@@ -5,7 +5,7 @@ use crate::{
     Core, Directions, ManycoreSystem, WithID, WithXMLAttributes, ID_KEY,
 };
 
-static TASK_KEY: &'static str = "@allocated_task";
+static TASK_KEY: &'static str = "@allocatedTask";
 
 impl ManycoreSystem {
     /// Wrapper to generate an [`InfoError`][ManycoreErrorKind::InfoError].

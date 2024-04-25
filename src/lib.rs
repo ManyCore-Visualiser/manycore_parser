@@ -24,6 +24,7 @@ pub use crate::router::*;
 pub use crate::routing::*;
 pub use configurable_attributes::*;
 use getset::{Getters, MutGetters, Setters};
+use quick_xml::DeError;
 use serde::{Deserialize, Serialize};
 
 pub static ID_KEY: &'static str = "@id";
@@ -88,6 +89,11 @@ impl ManycoreSystem {
 
         let mut manycore: ManycoreSystem =
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
+
+        let expected_number_of_cores = usize::from(manycore.columns) * usize::from(manycore.rows);
+        if manycore.cores().list().len() != expected_number_of_cores {
+            return Err(generation_error(format!("Expected {expected_number_of_cores} cores, found {}. Hint: make sure you provided the correct number of rows ({}) and columns ({}).", manycore.rows, manycore.columns, manycore.cores.list().len())));
+        }
 
         // Sort cores by id. This is potentially unnecessary if the file contains,
         // cores in an ordered manner but that is not a guarantee.
@@ -183,5 +189,20 @@ impl ManycoreSystem {
         );
 
         Ok(manycore)
+    }
+}
+
+impl TryFrom<&ManycoreSystem> for String {
+    type Error = DeError;
+
+    fn try_from(manycore: &ManycoreSystem) -> Result<Self, Self::Error> {
+        let mut buf = String::new();
+        let mut serialiser = quick_xml::se::Serializer::new(&mut buf);
+        serialiser.indent(' ', 4);
+        serialiser.set_quote_level(quick_xml::se::QuoteLevel::Minimal);
+
+        manycore.serialize(serialiser)?;
+
+        Ok(buf)
     }
 }

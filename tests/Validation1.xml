@@ -122,7 +122,7 @@
             </Channels>
         </Core>
 
-        <Core id="7" age="15" status="High" actualFrequency="Mid" temperature="30"
+        <Core id="8" age="15" status="High" actualFrequency="Mid" temperature="30"
             allocatedTask="2">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
@@ -137,7 +137,7 @@
             </Channels>
         </Core>
 
-        <Core id="8" age="10" status="High" actualFrequency="Low" temperature="30">
+        <Core id="9" age="10" status="High" actualFrequency="Low" temperature="30">
             <Router age="30" status="Normal" temperature="30" />
             <Channels>
                 <Channel direction="North" age="30" actualComCost="4" status="Normal"
@@ -153,7 +153,7 @@
     </Cores>
 
     <Borders>
-        <Source coreID="1" direction="North" taskid="0" actualComCost="10"/>
+        <Source coreID="1" direction="North" taskid="0" actualComCost="10" />
         <Source coreID="0" direction="West" taskid="1" />
         <Sink coreID="6" direction="West" taskid="5" />
     </Borders>

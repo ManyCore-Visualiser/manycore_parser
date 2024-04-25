@@ -14,6 +14,9 @@ pub struct Source {
     direction: SinkSourceDirection,
     #[serde(rename = "@taskid")]
     task_id: u16,
+    #[serde(rename = "@actualComCost", skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
+    actual_com_cost: Option<u16>,
 }
 
 impl BTreeVector<u16> for Source {
@@ -37,11 +40,17 @@ impl PartialOrd for Source {
 #[cfg(test)]
 impl Source {
     /// Generates a new [`Source`] instance according to provided parameters.
-    pub(crate) fn new(core_id: usize, direction: SinkSourceDirection, task_id: u16) -> Self {
+    pub(crate) fn new(
+        core_id: usize,
+        direction: SinkSourceDirection,
+        task_id: u16,
+        actual_com_cost: Option<u16>,
+    ) -> Self {
         Self {
             core_id,
             direction,
             task_id,
+            actual_com_cost,
         }
     }
 }

@@ -6,15 +6,15 @@ use crate::{
 #[cfg(test)]
 fn get_load(
     manycore: &mut ManycoreSystem,
-    id: usize,
+    core_id: usize,
     direction: Directions,
 ) -> Result<u16, ManycoreError> {
-    Ok(*get_core(manycore.cores_mut(), id)?
+    Ok(*get_core(manycore.cores_mut(), core_id)?
         .channels()
         .channel()
         .get(&direction)
         .ok_or(routing_error(format!(
-            "Core {id} has no {direction} channel."
+            "Core {core_id} has no {direction} channel."
         )))?
         .current_load())
 }
@@ -90,6 +90,43 @@ fn column_first_is_correct() {
     );
     assert_eq!(
         30,
+        get_source_load(&mut manycore, 1, Directions::North).unwrap()
+    );
+}
+
+#[test]
+fn observed_is_correct() {
+    let mut manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
+        .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
+
+    manycore.route(&RoutingAlgorithms::Observed).unwrap();
+
+    for core in manycore.cores().list() {
+        for direction in [Directions::North, Directions::East, Directions::South] {
+            assert_eq!(
+                4,
+                *core
+                    .channels()
+                    .channel()
+                    .get(&direction)
+                    .unwrap()
+                    .current_load()
+            );
+        }
+
+        assert_eq!(
+            0,
+            *core
+                .channels()
+                .channel()
+                .get(&Directions::West)
+                .unwrap()
+                .current_load()
+        );
+    }
+
+    assert_eq!(
+        10,
         get_source_load(&mut manycore, 1, Directions::North).unwrap()
     );
 }
