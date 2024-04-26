@@ -92,7 +92,7 @@ impl ManycoreSystem {
 
         let expected_number_of_cores = usize::from(manycore.columns) * usize::from(manycore.rows);
         if manycore.cores().list().len() != expected_number_of_cores {
-            return Err(generation_error(format!("Expected {expected_number_of_cores} cores, found {}. Hint: make sure you provided the correct number of rows ({}) and columns ({}).", manycore.rows, manycore.columns, manycore.cores.list().len())));
+            return Err(generation_error(format!("Expected {expected_number_of_cores} cores, found {}. Hint: make sure you provided the correct number of rows ({}) and columns ({}).", manycore.cores.list().len(), manycore.rows, manycore.columns)));
         }
 
         // Sort cores by id. This is potentially unnecessary if the file contains,
