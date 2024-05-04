@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::ManycoreError, Borders, Core, Cores, Directions, Edge, ManycoreErrorKind,
+    error::ManycoreError, BorderRouter, Borders, Core, Cores, Directions, Edge, ManycoreErrorKind,
     ManycoreSystem, SinkSourceDirection, WithID,
 };
 
@@ -133,47 +133,52 @@ fn handle_borders(
     Ok(())
 }
 
-impl ManycoreSystem {
-    /// Returns the core upon which the given task id is mapped.
-    fn task_id_to_core<'a>(
-        task_core_map: &HashMap<u16, usize>,
-        task_id: u16,
-        borders: &mut Option<Borders>,
-        cores: &'a Cores,
-    ) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
-        match task_core_map.get(&task_id) {
-            // Lucky base case, the task is allocated on a core.
-            Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
-            None => match borders {
-                // The task is hopefuly coming from a source or is allocated on a sink.
-                Some(borders) => {
-                    if let Some(sink) = borders.sinks().get(&task_id) {
-                        // Task is on a sink
-                        let idx = sink.core_id();
+/// Determines if the provided task_id is mapped on an edge/border router. If so, what core is it connected to and in what direction.
+fn border_task_id_to_core(borders: &Borders, task_id: u16) -> Option<(usize, SinkSourceDirection)> {
+    let get_data = |border: &dyn BorderRouter| -> Option<(usize, SinkSourceDirection)> {
+        Some((*border.core_id(), border.direction().clone()))
+    };
 
-                        Ok((
-                            cores.list().get(*idx).ok_or(no_core(idx))?,
-                            Some(sink.direction().clone()),
-                        ))
-                    } else if let Some(source) = borders.sources_mut().get_mut(&task_id) {
-                        // Task is on a source
-                        let idx = *source.core_id();
-
-                        Ok((
-                            cores.list().get(idx).ok_or(no_core(&idx))?,
-                            Some(source.direction().clone()),
-                        ))
-                    } else {
-                        // The requested task is nowhere to be found. Task graph is invalid.
-                        Err(no_task(&task_id))
-                    }
-                }
-                // The requested task is nowhere to be found. Task graph is invalid.
-                None => Err(no_task(&task_id)),
-            },
-        }
+    if let Some(sink) = borders.sinks().get(&task_id) {
+        return get_data(sink);
     }
 
+    if let Some(source) = borders.sources().get(&task_id) {
+        return get_data(source);
+    }
+
+    None
+}
+
+/// Returns the core upon which the given task id is mapped.
+fn task_id_to_core<'a>(
+    task_core_map: &HashMap<u16, usize>,
+    task_id: u16,
+    borders: &mut Option<Borders>,
+    cores: &'a Cores,
+) -> Result<(&'a Core, Option<SinkSourceDirection>), ManycoreError> {
+    match task_core_map.get(&task_id) {
+        // Lucky base case, the task is allocated on a core.
+        Some(i) => Ok((cores.list().get(*i).ok_or(no_core(i))?, None)),
+        None => match borders {
+            // The task is hopefuly coming from a source or is allocated on a sink.
+            Some(borders) => match border_task_id_to_core(borders, task_id) {
+                Some((idx, direction)) => {
+                    Ok((cores.list().get(idx).ok_or(no_core(&idx))?, Some(direction)))
+                }
+                None => {
+                    // The requested task is nowhere to be found. Task graph is invalid.
+                    Err(no_task(&task_id))
+                }
+            },
+
+            // The requested task is nowhere to be found. Task graph is invalid.
+            None => Err(no_task(&task_id)),
+        },
+    }
+}
+
+impl ManycoreSystem {
     /// Calculates required routing information for the given task graph edge.
     fn calculate_edge_routing_information(
         cores: &Cores,
@@ -185,13 +190,11 @@ impl ManycoreSystem {
     ) -> Result<EdgeRoutingInformation, ManycoreError> {
         // Retrieve core upon which source task is mapped.
         // Will take care of mapping onto core if coming from source.
-        let (start, source) =
-            ManycoreSystem::task_id_to_core(task_core_map, *edge.from(), borders, cores)?;
+        let (start, source) = task_id_to_core(task_core_map, *edge.from(), borders, cores)?;
 
         // Retrieve core upon which destination task is mapped.
         // Will take care of mapping onto core if coming from sink.
-        let (destination, sink) =
-            ManycoreSystem::task_id_to_core(task_core_map, *edge.to(), borders, cores)?;
+        let (destination, sink) = task_id_to_core(task_core_map, *edge.to(), borders, cores)?;
 
         let start_id = *start.id();
         let destination_id = *destination.id();

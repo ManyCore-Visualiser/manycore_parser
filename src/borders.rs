@@ -31,6 +31,12 @@ pub enum BorderEntry {
 #[cfg(doc)]
 use crate::Core;
 
+/// Trait that allows interoperability between sources and sinks.
+pub(crate) trait BorderRouter {
+    fn core_id(&self) -> &usize;
+    fn direction(&self) -> &SinkSourceDirection;
+}
+
 /// Object representation of `<Borders>` as provided in XML input file.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]

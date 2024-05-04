@@ -2,6 +2,8 @@ use getset::Getters;
 use manycore_utils::BTreeVector;
 use serde::{Deserialize, Serialize};
 
+use crate::BorderRouter;
+
 use super::SinkSourceDirection;
 
 /// Object representation of a `<Sink>` element as provided in XML input file.
@@ -43,5 +45,15 @@ impl Sink {
             direction,
             task_id,
         }
+    }
+}
+
+impl BorderRouter for Sink {
+    fn core_id(&self) -> &usize {
+        Sink::core_id(&self)
+    }
+
+    fn direction(&self) -> &SinkSourceDirection {
+        Sink::direction(&self)
     }
 }

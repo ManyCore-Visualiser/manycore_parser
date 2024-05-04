@@ -2,6 +2,8 @@ use getset::{Getters, MutGetters};
 use manycore_utils::BTreeVector;
 use serde::{Deserialize, Serialize};
 
+use crate::BorderRouter;
+
 use super::SinkSourceDirection;
 
 /// Object representation of a `<Source>` element as provided in XML input file.
@@ -52,5 +54,15 @@ impl Source {
             task_id,
             actual_com_cost,
         }
+    }
+}
+
+impl BorderRouter for Source {
+    fn core_id(&self) -> &usize {
+        Source::core_id(&self)
+    }
+
+    fn direction(&self) -> &SinkSourceDirection {
+        Source::direction(&self)
     }
 }
