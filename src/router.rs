@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use getset::Setters;
 use serde::{Deserialize, Serialize};
 
-use crate::{utils, WithID, WithXMLAttributes};
+use crate::{utils, ElementIDT, WithID, WithXMLAttributes};
 
 #[cfg(doc)]
 use crate::Core;
@@ -14,7 +14,7 @@ pub struct Router {
     /// The associated core id (not part of XML).
     #[serde(skip)]
     #[getset(set = "pub")]
-    id: u8,
+    id: ElementIDT,
     /// Any other router attribute present in the XML.
     #[serde(
         flatten,
@@ -27,7 +27,7 @@ pub struct Router {
 impl Router {
     #[cfg(test)]
     /// Instantiates a new [`Router`] instance.
-    pub fn new(id: u8, other_attributes: Option<BTreeMap<String, String>>) -> Self {
+    pub fn new(id: ElementIDT, other_attributes: Option<BTreeMap<String, String>>) -> Self {
         Self {
             id,
             other_attributes,
@@ -45,8 +45,8 @@ impl WithXMLAttributes for Router {
     }
 }
 
-impl WithID<u8> for Router {
-    fn id(&self) -> &u8 {
+impl WithID<ElementIDT> for Router {
+    fn id(&self) -> &ElementIDT {
         &self.id
     }
 }

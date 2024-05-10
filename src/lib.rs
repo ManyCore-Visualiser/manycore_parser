@@ -192,7 +192,8 @@ impl ManycoreSystem {
             }
 
             // router ID
-            core.router_mut().set_id(i as u8);
+            let core_id = *core.id();
+            core.router_mut().set_id(core_id);
 
             // Populate attribute maps
             core_attributes.extend_from_element(core);
