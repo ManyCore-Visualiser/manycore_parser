@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, num::TryFromIntError};
 
 #[cfg(doc)]
 use crate::ManycoreSystem;
@@ -11,6 +11,7 @@ pub enum ManycoreErrorKind {
     InfoError(&'static str),
     GenerationError(String),
     RoutingError(String),
+    DimensionsConversionError(String),
 }
 
 /// A generic error container used to keep results consistent within the library.
@@ -32,8 +33,19 @@ impl Display for ManycoreError {
             ManycoreErrorKind::InfoError(e) => write!(f, "Info Error: {}", e),
             ManycoreErrorKind::GenerationError(e) => write!(f, "Generation Error: {}", e),
             ManycoreErrorKind::RoutingError(e) => write!(f, "Routing Error: {}", e),
+            ManycoreErrorKind::DimensionsConversionError(e) => {
+                write!(f, "Dimensions Conversion Error: {}", e)
+            }
         }
     }
 }
 
 impl Error for ManycoreError {}
+
+impl From<TryFromIntError> for ManycoreError {
+    fn from(value: TryFromIntError) -> Self {
+        ManycoreError {
+            error_kind: ManycoreErrorKind::DimensionsConversionError(value.to_string()),
+        }
+    }
+}

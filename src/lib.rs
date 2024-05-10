@@ -32,6 +32,16 @@ pub static COORDINATES_KEY: &'static str = "@coordinates";
 pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
 pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
 
+/// Type for rows and columns
+pub type SystemDimensionsT = u32;
+/// Type for Element IDs
+pub type ElementIDT = i64;
+/// Type that can fully contain SystemDimensionsT + negative space
+type WrappingSystemDimensionsT = i64;
+
+pub(crate) const UNSUPPORTED_PLATFORM: &'static str =
+    "manycore_parser only supports 64-bit architectures.";
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
 /// Object representation of a ManyCore System as provided in input XML file.
@@ -47,11 +57,17 @@ pub struct ManycoreSystem {
     #[getset(get = "pub")]
     #[serde(rename = "@rows")]
     /// Rows in the cores matrix.
-    rows: u8,
+    rows: SystemDimensionsT,
+    /// Rows but with elements id type.
+    #[serde(skip)]
+    rows_in_id_space: ElementIDT,
     #[serde(rename = "@columns")]
     #[getset(get = "pub")]
     /// Columns in the cores matrix.
-    columns: u8,
+    columns: SystemDimensionsT,
+    /// Columns but with elements id type.
+    #[serde(skip)]
+    columns_in_id_space: ElementIDT,
     #[serde(rename = "@routingAlgo", skip_serializing_if = "Option::is_none")]
     #[getset(get = "pub")]
     /// Algorithm used in the observed routing (Channels data), if any.
@@ -89,8 +105,14 @@ impl ManycoreSystem {
 
         let mut manycore: ManycoreSystem =
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
+        
+        // Dimensions in ID type
+        manycore.columns_in_id_space = ElementIDT::from(manycore.columns);
+        manycore.rows_in_id_space = ElementIDT::from(manycore.rows);
 
-        let expected_number_of_cores = usize::from(manycore.columns) * usize::from(manycore.rows);
+        let expected_number_of_cores = usize::try_from(manycore.columns)
+            .expect(UNSUPPORTED_PLATFORM)
+            * usize::try_from(manycore.rows).expect(UNSUPPORTED_PLATFORM);
         if manycore.cores().list().len() != expected_number_of_cores {
             return Err(generation_error(format!("Expected {expected_number_of_cores} cores, found {}. Hint: make sure you provided the correct number of rows ({}) and columns ({}).", manycore.cores.list().len(), manycore.rows, manycore.columns)));
         }
@@ -114,13 +136,13 @@ impl ManycoreSystem {
         channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
 
         // Core id validation tracker
-        let mut prev_id: i16 = -1;
+        let mut prev_id: WrappingSystemDimensionsT = -1;
 
         let last = manycore.cores.list().len() - 1;
         let mut task_core_map = HashMap::new();
         for i in 0..=last {
-            let columns = manycore.columns;
-            let rows = manycore.rows;
+            let columns = manycore.columns_in_id_space;
+            let rows = manycore.rows_in_id_space;
 
             let core = manycore
                 .cores_mut()
@@ -131,7 +153,7 @@ impl ManycoreSystem {
                 ))?;
 
             // Validate IDs follow incrementing sequence starting from zero: 0 -> 1 -> 2 -> etc.
-            let validation_id = i16::from(*core.id());
+            let validation_id = WrappingSystemDimensionsT::from(*core.id());
             if (validation_id - prev_id) != 1 {
                 return Err(generation_error(format!(
                     "Core IDs must be incremental starting from 0{}",

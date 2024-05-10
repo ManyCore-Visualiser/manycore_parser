@@ -7,7 +7,7 @@ use std::{
 #[cfg(test)]
 use crate::{
     AttributeType, AttributesMap, BorderEntry, Borders, Channel, Channels, ConfigurableAttributes,
-    Core, Cores, Directions, Edge, ManycoreSystem, ProcessedAttribute, Router, Sink,
+    Core, Cores, Directions, Edge, ElementIDT, ManycoreSystem, ProcessedAttribute, Router, Sink,
     SinkSourceDirection, Source, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY,
     ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
 };
@@ -311,7 +311,9 @@ fn can_parse() {
         xmlns_si: String::from("http://www.w3.org/2001/XMLSchema-instance"),
         xsi_schema_location: String::from("https://www.york.ac.uk/physics-engineering-technology/ManycoreSystems https://gist.githubusercontent.com/joe2k01/718e437790047ca14447af3b8309ef76/raw/3e0d9d40ecead18fe3967b831160edd3463908d1/manycore_schema.xsd"),
         columns: expected_columns,
+        columns_in_id_space: ElementIDT::from(expected_columns),
         rows: expected_rows,
+        rows_in_id_space: ElementIDT::from(expected_rows),
         routing_algo: Some(String::from("RowFirst")),
         borders: Some(Borders::new(expected_sinks, expected_sources, expected_core_border_map)),
         cores: Cores::new(expected_cores),

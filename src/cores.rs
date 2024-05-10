@@ -1,5 +1,5 @@
 use crate::{
-    channels::Channels, router::*, routing_error, utils, Directions, ManycoreError,
+    channels::Channels, router::*, routing_error, utils, Directions, ElementIDT, ManycoreError,
     SinkSourceDirection, WithID, WithXMLAttributes,
 };
 use getset::{Getters, MutGetters, Setters};
@@ -8,6 +8,9 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     hash::Hash,
 };
+
+#[cfg(test)]
+use crate::SystemDimensionsT;
 
 /// Describes where in the matrix edge the core is located.
 /// Used to determine number of edge connections.
@@ -87,7 +90,7 @@ pub struct Core {
     /// The core id.
     #[serde(rename = "@id")]
     #[getset(skip)]
-    id: u8,
+    id: ElementIDT,
     /// The router connected to the core.
     #[serde(rename = "Router")]
     router: Router,
@@ -116,9 +119,9 @@ impl Core {
     #[cfg(test)]
     /// Instantiates a new [`Core`] instance.
     pub fn new(
-        id: u8,
-        columns: u8,
-        rows: u8,
+        id: ElementIDT,
+        columns: SystemDimensionsT,
+        rows: SystemDimensionsT,
         router: Router,
         allocated_task: Option<u16>,
         channels: Channels,
@@ -130,13 +133,21 @@ impl Core {
             allocated_task,
             channels,
             source_loads: None,
-            matrix_edge: Core::calculate_edge(id, columns, rows),
+            matrix_edge: Core::calculate_edge(
+                id,
+                ElementIDT::from(columns),
+                ElementIDT::from(rows),
+            ),
             other_attributes,
         }
     }
 
     /// Utility to determine if a core is on the edge, and if so where.
-    fn calculate_edge(id: u8, columns: u8, rows: u8) -> Option<EdgePosition> {
+    fn calculate_edge(
+        id: ElementIDT,
+        columns: ElementIDT,
+        rows: ElementIDT,
+    ) -> Option<EdgePosition> {
         let bl_bound = (rows - 1) * columns;
         if id % columns == 0 {
             return match id {
@@ -160,8 +171,12 @@ impl Core {
     }
 
     /// Utility function to populate the matrix_edge field.
-    pub(crate) fn populate_matrix_edge(&mut self, columns: u8, rows: u8) {
-        self.matrix_edge = Core::calculate_edge(self.id, columns, rows);
+    pub(crate) fn populate_matrix_edge(
+        &mut self,
+        columns_in_id_space: ElementIDT,
+        rows_in_id_space: ElementIDT,
+    ) {
+        self.matrix_edge = Core::calculate_edge(self.id, columns_in_id_space, rows_in_id_space);
     }
 
     /// Utility function to add to a source load.
@@ -208,8 +223,8 @@ impl WithXMLAttributes for Core {
     }
 }
 
-impl WithID<u8> for Core {
-    fn id(&self) -> &u8 {
+impl WithID<ElementIDT> for Core {
+    fn id(&self) -> &ElementIDT {
         &self.id
     }
 }
