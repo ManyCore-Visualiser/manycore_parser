@@ -33,7 +33,7 @@ pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
 pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
 
 /// Type for rows and columns
-pub type SystemDimensionsT = u32;
+pub type SystemDimensionsT = i32;
 /// Type for Element IDs
 pub type ElementIDT = i64;
 /// Type that can fully contain SystemDimensionsT + negative space
@@ -105,7 +105,19 @@ impl ManycoreSystem {
 
         let mut manycore: ManycoreSystem =
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
-        
+
+        // Sanitise rows and columns
+        if manycore.columns < 0 || manycore.rows < 0 {
+            return Err(generation_error(format!(
+                "Manycore {} cannot be negative",
+                if manycore.columns < 0 {
+                    "columns"
+                } else {
+                    "rows"
+                }
+            )));
+        }
+
         // Dimensions in ID type
         manycore.columns_in_id_space = ElementIDT::from(manycore.columns);
         manycore.rows_in_id_space = ElementIDT::from(manycore.rows);
