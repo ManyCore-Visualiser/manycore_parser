@@ -1,3 +1,4 @@
+use std::fs;
 #[cfg(test)]
 use std::{
     collections::{BTreeMap, HashMap},
@@ -324,6 +325,9 @@ fn can_parse() {
 
     let manycore = ManycoreSystem::parse_file("tests/VisualiserOutput1.xml")
         .expect("Could not read input test file \"tests/VisualiserOutput1.xml\"");
+
+    // fs::write("expected.xml", String::try_from(&expected_manycore).unwrap());
+    // fs::write("actual.xml", String::try_from(&manycore).unwrap());
 
     assert_eq!(manycore, expected_manycore)
 }

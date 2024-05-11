@@ -12,8 +12,11 @@ mod routing;
 mod tests;
 mod utils;
 
+use std::cmp::min;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
+use std::thread;
 
 pub use crate::borders::*;
 pub use crate::channels::*;
@@ -102,10 +105,11 @@ impl ManycoreSystem {
     pub fn parse_file(path: &str) -> Result<ManycoreSystem, ManycoreError> {
         let file_content =
             std::fs::read_to_string(path).map_err(|e| generation_error(e.to_string()))?;
+        println!("Read file");
 
         let mut manycore: ManycoreSystem =
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
-
+        println!("Deserialised");
         // Sanitise rows and columns
         if manycore.columns < 0 || manycore.rows < 0 {
             return Err(generation_error(format!(
@@ -131,6 +135,7 @@ impl ManycoreSystem {
 
         // Sort cores by id. This is potentially unnecessary if the file contains,
         // cores in an ordered manner but that is not a guarantee.
+        println!("Sorting");
         manycore
             .cores_mut()
             .list_mut()
@@ -147,64 +152,133 @@ impl ManycoreSystem {
         // Manually insert channel attributes that are not part of the "other_attributes" map.
         channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
 
-        // Core id validation tracker
-        let mut prev_id: WrappingSystemDimensionsT = -1;
+        let threads = usize::from(
+            std::thread::available_parallelism().unwrap_or(NonZeroUsize::try_from(1usize)?),
+        );
+        let cores_n = manycore.cores().list().len();
+        // div_ceil is always at least 1 for non-zero core length
+        let usable_threads = min(threads, cores_n);
+        let cores_in_thread = cores_n.div_ceil(usable_threads);
 
-        let last = manycore.cores.list().len() - 1;
-        let mut task_core_map = HashMap::new();
-        for i in 0..=last {
-            let columns = manycore.columns_in_id_space;
-            let rows = manycore.rows_in_id_space;
+        println!("{}", format!("Using {usable_threads} threads"));
 
-            let core = manycore
-                .cores_mut()
-                .list_mut()
-                .get_mut(i)
-                .ok_or(generation_error(
-                    "Something went wrong inspecting Core data.".into(),
-                ))?;
+        let columns = manycore.columns_in_id_space;
+        let rows = manycore.rows_in_id_space;
+        let tasks_n = manycore.task_graph().tasks().len();
+        let cores_ref = manycore.cores_mut().list_mut();
+        
+        struct ThreadRet {
+            task_core_map: HashMap<u16, usize>,
+            core_attributes: BTreeMap<String, ProcessedAttribute>,
+            router_attributes: BTreeMap<String, ProcessedAttribute>,
+            channel_attributes: BTreeMap<String, ProcessedAttribute>,
+        }
 
-            // Validate IDs follow incrementing sequence starting from zero: 0 -> 1 -> 2 -> etc.
-            let validation_id = WrappingSystemDimensionsT::from(*core.id());
-            if (validation_id - prev_id) != 1 {
-                return Err(generation_error(format!(
-                    "Core IDs must be incremental starting from 0{}",
-                    if prev_id > -1 {
-                        format!(
+        let threads_ret = thread::scope(|scope| -> Result<ThreadRet, ManycoreError> {
+            let (mut operating_slice, _) = cores_ref.split_at_mut(cores_n);
+            let mut spawned_threads = Vec::with_capacity(usable_threads);
+
+            for i in 0..usable_threads {
+                let from = i * cores_in_thread;
+                // Cap end to length of array
+                let to = min((i + 1) * cores_in_thread, cores_n);
+
+                let (slice, end_half) = operating_slice.split_at_mut(to - from);
+                operating_slice = end_half;
+
+                let thread = scope.spawn(move || -> Result<ThreadRet, ManycoreError> {
+                    let last = slice.len();
+                    // Core id validation tracker
+                    let mut prev_id: WrappingSystemDimensionsT =
+                        WrappingSystemDimensionsT::try_from(i * cores_in_thread)? - 1;
+
+                    // Thread local maps
+                    let mut local_task_core_map: HashMap<u16, usize> = HashMap::new();
+                    let mut local_core_attributes: BTreeMap<String, ProcessedAttribute> =
+                        BTreeMap::new();
+                    let mut local_router_attributes: BTreeMap<String, ProcessedAttribute> =
+                        BTreeMap::new();
+                    let mut local_channel_attributes: BTreeMap<String, ProcessedAttribute> =
+                        BTreeMap::new();
+
+                    for i in 0..last {
+                        let core = slice.get_mut(i).ok_or(generation_error(
+                            "Something went wrong inspecting Core data.".into(),
+                        ))?;
+
+                        // Validate IDs follow incrementing sequence starting from zero: 0 -> 1 -> 2 -> etc.
+                        let validation_id = WrappingSystemDimensionsT::from(*core.id());
+                        if (validation_id - prev_id) != 1 {
+                            return Err(generation_error(format!(
+                                "Core IDs must be incremental starting from 0{}",
+                                if prev_id > -1 {
+                                    format!(
                             ". Was expecting ID {}, got {}. Previously inspected core had ID {}.",
                             prev_id + 1,
                             validation_id,
                             prev_id
                         )
-                    } else {
-                        ".".to_string()
+                                } else {
+                                    ".".to_string()
+                                }
+                            )));
+                        }
+                        prev_id += 1;
+
+                        // Matrix edge
+                        core.populate_matrix_edge(columns, rows);
+
+                        // task -> core map
+                        if let Some(task_id) = core.allocated_task().as_ref() {
+                            local_task_core_map.insert(*task_id, usize::try_from(*core.id())?);
+                        }
+
+                        // router ID
+                        let core_id = *core.id();
+                        core.router_mut().set_id(core_id);
+
+                        // Populate attribute maps
+                        local_core_attributes.extend_from_element(core);
+                        local_router_attributes.extend_from_element(core.router());
+                        for channel in core.channels().channel().values() {
+                            local_channel_attributes.extend_from_element(channel);
+                        }
                     }
-                )));
+
+                    Ok(ThreadRet {
+                        task_core_map: local_task_core_map,
+                        core_attributes: local_core_attributes,
+                        router_attributes: local_router_attributes,
+                         channel_attributes: local_channel_attributes
+                    })
+                });
+
+                spawned_threads.push(thread);
             }
-            prev_id += 1;
 
-            // Matrix edge
-            core.populate_matrix_edge(columns, rows);
+            let mut ret = ThreadRet {
+                task_core_map: HashMap::with_capacity(tasks_n),
+                core_attributes: BTreeMap::new(),
+                router_attributes: BTreeMap::new(),
+                channel_attributes: BTreeMap::new()
+            };
 
-            // task -> core map
-            if let Some(task_id) = core.allocated_task().as_ref() {
-                task_core_map.insert(*task_id, i);
+            for t in spawned_threads {
+                let thread_ret = t.join()
+                    .map_err(|_| generation_error("Concurrency error. Bailing...".into()))??;
+
+                ret.task_core_map.extend(thread_ret.task_core_map);
+                ret.core_attributes.extend(thread_ret.core_attributes);
+                ret.router_attributes.extend(thread_ret.router_attributes);
+                ret.channel_attributes.extend(thread_ret.channel_attributes);
             }
 
-            // router ID
-            let core_id = *core.id();
-            core.router_mut().set_id(core_id);
+            Ok(ret)
+        })?;
 
-            // Populate attribute maps
-            core_attributes.extend_from_element(core);
-            router_attributes.extend_from_element(core.router());
-            for channel in core.channels().channel().values() {
-                channel_attributes.extend_from_element(channel);
-            }
-        }
-
+        
         // Store task->core map
-        manycore.task_core_map = task_core_map;
+        manycore.task_core_map = threads_ret.task_core_map;
 
         // Populate core -> border map
         if let Some(borders) = manycore.borders_mut() {
@@ -215,6 +289,9 @@ impl ManycoreSystem {
         }
 
         // Instantiate configurable attributes
+        core_attributes.extend(threads_ret.core_attributes);
+        router_attributes.extend(threads_ret.router_attributes);
+        channel_attributes.extend(threads_ret.channel_attributes);
         manycore.configurable_attributes = ConfigurableAttributes::new(
             core_attributes,
             router_attributes,
