@@ -30,7 +30,8 @@ impl Edge {
 }
 
 /// Object representation of a `<Task>` element in input XML.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Getters)]
+#[getset(get = "pub")]
 pub struct Task {
     #[serde(rename = "@id")]
     id: u16,
