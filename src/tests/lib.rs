@@ -28,7 +28,11 @@ fn can_parse() {
     let status_string = "@status".to_string();
     let acc_freq_string = "@actualFrequency".to_string();
 
-    let expected_tasks = vec![Task::new(2, 40), Task::new(3, 80), Task::new(4, 60)];
+    let expected_tasks = BTreeMap::from([
+        (2, Task::new(2, 40)),
+        (3, Task::new(3, 80)),
+        (4, Task::new(4, 60)),
+    ]);
 
     let expected_edges = vec![
         Edge::new(0, 2, 30),
