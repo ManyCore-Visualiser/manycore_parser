@@ -55,6 +55,7 @@ impl Task {
 pub struct TaskGraph {
     /// Vector of tasks in the graph (graph nodes).
     #[serde(rename = "Task")]
+    #[getset(get = "pub")]
     tasks: Vec<Task>,
     /// Vector of edges connecting tasks (grpah edges).
     #[serde(rename = "Edge")]
