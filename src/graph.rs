@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+use manycore_utils::{deserialize_btree_vector, serialise_btreemap, BTreeVector};
 use getset::{Getters, MutGetters};
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +32,8 @@ impl Edge {
 }
 
 /// Object representation of a `<Task>` element in input XML.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Getters)]
+#[getset(get = "pub")]
 pub struct Task {
     #[serde(rename = "@id")]
     id: u16,
@@ -49,13 +52,23 @@ impl Task {
     }
 }
 
+impl BTreeVector<u16> for Task {
+    fn key(&self) -> u16 {
+        self.id
+    }
+}
+
 /// Object representation of `<TaskGrraph>` element in input XML.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, MutGetters, Clone)]
 pub struct TaskGraph {
     /// Vector of tasks in the graph (graph nodes).
     #[serde(rename = "Task")]
-    #[getset(get = "pub")]
-    tasks: Vec<Task>,
+    #[getset(get = "pub", get_mut)]
+    #[serde(
+        deserialize_with = "deserialize_btree_vector",
+        serialize_with = "serialise_btreemap"
+    )]
+    tasks: BTreeMap<u16, Task>,
     /// Vector of edges connecting tasks (grpah edges).
     #[serde(rename = "Edge")]
     #[getset(get = "pub", get_mut = "pub")]
@@ -65,7 +78,7 @@ pub struct TaskGraph {
 impl TaskGraph {
     #[cfg(test)]
     /// Instantiates a new Taskgraph.
-    pub(crate) fn new(tasks: Vec<Task>, edges: Vec<Edge>) -> Self {
+    pub(crate) fn new(tasks: BTreeMap<u16, Task>, edges: Vec<Edge>) -> Self {
         Self { tasks, edges }
     }
 }

@@ -36,14 +36,22 @@ pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
 pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
 
 /// Type for rows and columns
-pub type SystemDimensionsT = i32;
+pub type SystemDimensionsT = u8;
 /// Type for Element IDs
-pub type ElementIDT = i64;
-/// Type that can fully contain SystemDimensionsT + negative space
-type WrappingSystemDimensionsT = i64;
+pub type ElementIDT = u16;
+/// Type that can fully contain [`SystemDimensionsT`] + negative space.
+/// Must also contain [`ElementIDT`].
+type WrappingSystemDimensionsT = i32;
 
+/// Panic message to throw when converting SystemDimensionsT/ElementIDT to an
+/// index type and it does not fit.
+/// Conversion fails when target machine address space cannot index the cores
+/// vector. Change panic message if system dimensions are modified.
+/// Current values fit in a 32-bit machine. Technically, 16-bit machine should
+/// do but they tend to be weird and this crate does not account for any of
+/// their possible weirdness.
 pub(crate) const UNSUPPORTED_PLATFORM: &'static str =
-    "manycore_parser only supports 64-bit architectures.";
+    "manycore_parser supports 32-bit address space and up.";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
@@ -111,16 +119,16 @@ impl ManycoreSystem {
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
         println!("Deserialised");
         // Sanitise rows and columns
-        if manycore.columns < 0 || manycore.rows < 0 {
-            return Err(generation_error(format!(
-                "Manycore {} cannot be negative",
-                if manycore.columns < 0 {
-                    "columns"
-                } else {
-                    "rows"
-                }
-            )));
-        }
+        // if manycore.columns < 0 || manycore.rows < 0 {
+        //     return Err(generation_error(format!(
+        //         "Manycore {} cannot be negative",
+        //         if manycore.columns < 0 {
+        //             "columns"
+        //         } else {
+        //             "rows"
+        //         }
+        //     )));
+        // }
 
         // Dimensions in ID type
         manycore.columns_in_id_space = ElementIDT::from(manycore.columns);
@@ -230,7 +238,7 @@ impl ManycoreSystem {
 
                         // task -> core map
                         if let Some(task_id) = core.allocated_task().as_ref() {
-                            local_task_core_map.insert(*task_id, usize::try_from(*core.id())?);
+                            local_task_core_map.insert(*task_id, usize::from(*core.id()));
                         }
 
                         // router ID
