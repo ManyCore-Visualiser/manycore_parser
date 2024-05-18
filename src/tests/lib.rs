@@ -9,7 +9,7 @@ use crate::{
     AttributeType, AttributesMap, BorderEntry, Borders, Channel, Channels, ConfigurableAttributes,
     Core, Cores, Directions, Edge, ManycoreSystem, ProcessedAttribute, Router, Sink,
     SinkSourceDirection, Source, Task, TaskGraph, WithID, BORDER_ROUTERS_KEY, COORDINATES_KEY,
-    ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS,
+    ID_KEY, ROUTING_KEY, SUPPORTED_ALGORITHMS, TASK_COST_KEY,
 };
 
 #[cfg(test)]
@@ -245,6 +245,7 @@ fn can_parse() {
     ]);
     expected_core_conf_attrs.insert_manual(ID_KEY, AttributeType::Text);
     expected_core_conf_attrs.insert_manual(COORDINATES_KEY, AttributeType::Coordinates);
+    expected_core_conf_attrs.insert_manual(TASK_COST_KEY, AttributeType::Boolean);
 
     let expected_router_conf_attrs = BTreeMap::from([
         (

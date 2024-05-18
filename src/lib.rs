@@ -31,6 +31,7 @@ pub static ID_KEY: &'static str = "@id";
 pub static COORDINATES_KEY: &'static str = "@coordinates";
 pub static BORDER_ROUTERS_KEY: &'static str = "@borderRouters";
 pub static ROUTING_KEY: &'static str = "@routingAlgorithm";
+pub static TASK_COST_KEY: &'static str = "@taskCost";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Getters, Setters, MutGetters)]
 #[serde(rename_all = "PascalCase")]
@@ -110,6 +111,7 @@ impl ManycoreSystem {
         // Manually insert core attributes that are not part of the "other_attributes" map.
         core_attributes.insert_manual(ID_KEY, AttributeType::Text);
         core_attributes.insert_manual(COORDINATES_KEY, AttributeType::Coordinates);
+        core_attributes.insert_manual(TASK_COST_KEY, AttributeType::Boolean);
         // Manually insert channel attributes that are not part of the "other_attributes" map.
         channel_attributes.insert_manual(ROUTING_KEY, AttributeType::Routing);
 
