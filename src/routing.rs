@@ -3,8 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::ManycoreError, BorderRouter, Borders, Core, Cores, Directions, Edge, ManycoreErrorKind,
-    ManycoreSystem, SinkSourceDirection, WithID,
+    error::ManycoreError, BorderRouter, Borders, Core, Cores, Directions, Edge, ElementIDT, ManycoreErrorKind, ManycoreSystem, SinkSourceDirection, SystemDimensionsT, WithID, UNSUPPORTED_PLATFORM
 };
 
 /// An enum storing all supported routing algorithms.
@@ -26,19 +25,19 @@ pub(crate) static SUPPORTED_ALGORITHMS: [RoutingAlgorithms; 3] = [
 /// Provides information for routing a task graph edge.
 struct EdgeRoutingInformation {
     /// The source core id.
-    start_id: u8,
+    start_id: ElementIDT,
     /// The source core column.
-    start_column: u8,
+    start_column: SystemDimensionsT,
     /// The destination core id.
-    destination_id: u8,
+    destination_id: ElementIDT,
     /// The current routing column.
-    current_column: u8,
+    current_column: SystemDimensionsT,
     /// The current routing row.
-    current_row: u8,
+    current_row: SystemDimensionsT,
     /// The destination core column.
-    destination_column: u8,
+    destination_column: SystemDimensionsT,
     /// The destination core row.
-    destination_row: u8,
+    destination_row: SystemDimensionsT,
     /// The edge cost.
     communication_cost: u16,
     /// The source direction, if any.
@@ -77,10 +76,10 @@ pub(crate) fn get_core(cores: &mut Cores, i: usize) -> Result<&mut Core, Manycor
 }
 
 /// Type of a successfully genereated routing result map.
-pub type RoutingMap = HashMap<u8, BTreeMap<RoutingType, BTreeSet<Directions>>>;
+pub type RoutingMap = HashMap<ElementIDT, BTreeMap<RoutingType, BTreeSet<Directions>>>;
 
 /// Utility function to add routing data to the routing result map.
-fn add_to_ret(key: u8, routing_type: RoutingType, direction: Directions, ret: &mut RoutingMap) {
+fn add_to_ret(key: ElementIDT, routing_type: RoutingType, direction: Directions, ret: &mut RoutingMap) {
     ret.entry(key)
         .or_insert(BTreeMap::default())
         .entry(routing_type)
@@ -98,7 +97,8 @@ fn handle_borders(
     if let Some(source_direction) = eri.source_direction.as_ref() {
         // If so, we'll want to display load of the source channel. Add to map.
         let direction = source_direction.into();
-        let start_idx = usize::from(eri.start_id);
+        // This will never panic because of negative IDs as we sanitise them on parsing.
+        let start_idx = usize::try_from(eri.start_id).expect(UNSUPPORTED_PLATFORM);
 
         add_to_ret(eri.start_id, RoutingType::SourceChannel, direction, ret);
 
@@ -111,7 +111,8 @@ fn handle_borders(
     if let Some(sink_direction) = eri.sink_direction.as_ref() {
         // If so, we'll want to display load of the sink channel. Add to map.
         let direction = sink_direction.into();
-        let destination_idx = usize::from(eri.destination_id);
+        // See panic note on start_idx.
+        let destination_idx = usize::try_from(eri.destination_id).expect(UNSUPPORTED_PLATFORM);
 
         add_to_ret(
             eri.destination_id,
@@ -185,8 +186,8 @@ impl ManycoreSystem {
         borders: &mut Option<Borders>,
         task_core_map: &HashMap<u16, usize>,
         edge: &Edge,
-        columns: &u8,
-        rows: &u8,
+        columns_in_id_space: &ElementIDT,
+        rows_in_id_space: &ElementIDT,
     ) -> Result<EdgeRoutingInformation, ManycoreError> {
         // Retrieve core upon which source task is mapped.
         // Will take care of mapping onto core if coming from source.
@@ -200,11 +201,11 @@ impl ManycoreSystem {
         let destination_id = *destination.id();
 
         // Workout where are we and where do we want to go in inner matrix.
-        let current_column = start_id % columns;
+        let current_column = SystemDimensionsT::try_from(start_id % columns_in_id_space)?;
         let start_column = current_column.clone();
-        let current_row = start_id / rows;
-        let destination_column = destination_id % columns;
-        let destination_row = destination_id / rows;
+        let current_row = SystemDimensionsT::try_from(start_id / rows_in_id_space)?;
+        let destination_column = SystemDimensionsT::try_from(destination_id % columns_in_id_space)?;
+        let destination_row = SystemDimensionsT::try_from(destination_id / rows_in_id_space)?;
 
         Ok(EdgeRoutingInformation {
             start_id,
@@ -225,7 +226,8 @@ impl ManycoreSystem {
         let ManycoreSystem {
             ref mut cores,
             ref columns,
-            ref rows,
+            ref columns_in_id_space,
+            ref rows_in_id_space,
             ref task_graph,
             ref mut borders,
             ref task_core_map,
@@ -242,13 +244,13 @@ impl ManycoreSystem {
                 borders,
                 task_core_map,
                 edge,
-                columns,
-                rows,
+                columns_in_id_space,
+                rows_in_id_space,
             )?;
 
             handle_borders(cores, &mut ret, &eri)?;
 
-            let mut current_idx = usize::from(eri.start_id);
+            let mut current_idx = usize::try_from(eri.start_id).expect(UNSUPPORTED_PLATFORM);
             let mut core;
 
             // We must update every connection in the routers matrix
@@ -270,7 +272,7 @@ impl ManycoreSystem {
                         );
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::North)?;
-                        current_idx -= usize::from(*columns);
+                        current_idx -= usize::try_from(*columns).expect(UNSUPPORTED_PLATFORM);
                         eri.current_row -= 1;
                     } else {
                         // Going down
@@ -282,7 +284,7 @@ impl ManycoreSystem {
                         );
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::South)?;
-                        current_idx += usize::from(*columns);
+                        current_idx += usize::try_from(*columns).expect(UNSUPPORTED_PLATFORM);
                         eri.current_row += 1;
                     }
                 } else if eri.destination_column != eri.current_column {
@@ -327,7 +329,8 @@ impl ManycoreSystem {
         let ManycoreSystem {
             ref mut cores,
             ref columns,
-            ref rows,
+            ref columns_in_id_space,
+            ref rows_in_id_space,
             ref task_graph,
             ref mut borders,
             ref task_core_map,
@@ -344,13 +347,13 @@ impl ManycoreSystem {
                 borders,
                 task_core_map,
                 edge,
-                columns,
-                rows,
+                columns_in_id_space,
+                rows_in_id_space,
             )?;
 
             handle_borders(cores, &mut ret, &eri)?;
 
-            let mut current_idx = usize::from(eri.start_id);
+            let mut current_idx = usize::try_from(eri.start_id).expect(UNSUPPORTED_PLATFORM);
             let mut core;
 
             // We must update every connection in the routers matrix
@@ -400,7 +403,7 @@ impl ManycoreSystem {
                         );
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::North)?;
-                        current_idx -= usize::from(*columns);
+                        current_idx -= usize::try_from(*columns).expect(UNSUPPORTED_PLATFORM);
                         eri.current_row -= 1;
                     } else {
                         // Going down
@@ -412,7 +415,7 @@ impl ManycoreSystem {
                         );
 
                         let _ = channels.add_to_load(eri.communication_cost, Directions::South)?;
-                        current_idx += usize::from(*columns);
+                        current_idx += usize::try_from(*columns).expect(UNSUPPORTED_PLATFORM);
                         eri.current_row += 1;
                     }
                 } else {
