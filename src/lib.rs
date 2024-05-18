@@ -11,6 +11,7 @@ mod router;
 mod routing;
 mod tests;
 mod utils;
+mod threaded_deser;
 
 use std::cmp::min;
 use std::collections::BTreeMap;
@@ -28,6 +29,7 @@ pub use crate::routing::*;
 pub use configurable_attributes::*;
 use getset::{Getters, MutGetters, Setters};
 use quick_xml::DeError;
+use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 
 pub static ID_KEY: &'static str = "@id";
@@ -114,6 +116,8 @@ impl ManycoreSystem {
         let file_content =
             std::fs::read_to_string(path).map_err(|e| generation_error(e.to_string()))?;
         println!("Read file");
+        ManycoreSystem::threaded_deserialise(path)?;
+        return Err(generation_error("a".into()));
 
         let mut manycore: ManycoreSystem =
             quick_xml::de::from_str(&file_content).map_err(|e| generation_error(e.to_string()))?;
