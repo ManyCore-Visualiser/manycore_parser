@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "manycore_utils"
 version = "0.1.0"
-source = "git+https://github.com/joe2k01/manycore_utils.git#4362bd98a961d15d52162393215b19221f98a543"
+source = "git+https://github.com/joe2k01/manycore_utils.git#55deabe771e876cde3412e30b8f216feb3beb40c"
 dependencies = [
  "serde",
 ]
