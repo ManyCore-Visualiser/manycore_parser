@@ -25,26 +25,22 @@ impl ManycoreSystem {
         };
 
         // Derive group individual information parts from group_id
-        let group_split = group_id.split("_").collect::<Vec<&str>>();
+        let mut group_id = group_id.chars();
 
-        let mut variant_chars = group_split[0].chars();
-        let variant_char = variant_chars.next().ok_or(
+        let variant_char = group_id.next().ok_or(
             self.info_error("Something went wrong retrieving this element's information."),
         )?;
-        let id_char = variant_chars
-            .next()
-            .ok_or(self.info_error("Invalid group id."))?;
+
+        // Variant is out of iterator
+        let numerical_id = group_id.as_str();
 
         let core: &Core = self
             .cores()
             .list()
             .get(
-                usize::try_from(
-                    id_char
-                        .to_digit(10)
-                        .ok_or(self.info_error("Invalid group_id."))?,
-                )
-                .map_err(|_| self.info_error("Invalid group id."))?,
+                numerical_id
+                    .parse::<usize>()
+                    .map_err(|_| self.info_error("Invalid group_id."))?,
             )
             .ok_or(self.info_error("Invalid index."))?;
 
@@ -76,23 +72,23 @@ impl ManycoreSystem {
                     None => Ok(Some(insert_core_default(BTreeMap::new()))),
                 }
             }
-            'l' => {
-                let direction: Directions = (*group_split
-                    .get(1)
-                    .ok_or(self.info_error("Invalid channel ID."))?)
-                .try_into()?;
+            // 'l' => {
+            //     let direction: Directions = (*group_split
+            //         .get(1)
+            //         .ok_or(self.info_error("Invalid channel ID."))?)
+            //     .try_into()?;
 
-                // All relevant link info is already stored in the "other_attributes" map.
-                let attributes_clone = core
-                    .channels()
-                    .channel()
-                    .get(&direction)
-                    .ok_or(self.info_error("Channel direction mismatch: Could not retrieve this channel's information."))?
-                    .other_attributes()
-                    .clone();
+            //     // All relevant link info is already stored in the "other_attributes" map.
+            //     let attributes_clone = core
+            //         .channels()
+            //         .channel()
+            //         .get(&direction)
+            //         .ok_or(self.info_error("Channel direction mismatch: Could not retrieve this channel's information."))?
+            //         .other_attributes()
+            //         .clone();
 
-                Ok(attributes_clone)
-            }
+            //     Ok(attributes_clone)
+            // }
             _ => Err(self.info_error("Invalid variant.")),
         }
     }
