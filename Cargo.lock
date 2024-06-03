@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "manycore_utils"
 version = "0.1.0"
-source = "git+https://github.com/joe2k01/manycore_utils.git#55deabe771e876cde3412e30b8f216feb3beb40c"
+source = "git+https://github.com/manycore-visualiser/manycore_utils.git#8d3a9912b898b7567afebbd66a6babe4e3599b24"
 dependencies = [
  "serde",
 ]
@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.82"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad3d49ab951a01fbaafe34f2ec74122942fe18a3f9814c3268f1bb72042131b"
+checksum = "22244ce15aa966053a896d1accb3a6e68469b97c7f33f284b99f0d576879fc23"
 dependencies = [
  "unicode-ident",
 ]
@@ -81,7 +81,7 @@ dependencies = [
 [[package]]
 name = "quick-xml"
 version = "0.31.0"
-source = "git+https://github.com/tafia/quick-xml.git#4a4abf7f56f8974b101170991e829e5d2a51ff30"
+source = "git+https://github.com/tafia/quick-xml.git#3edb78bee3a36608a2aa2cd593a85b1cba8c3230"
 dependencies = [
  "memchr",
  "serde",
@@ -104,22 +104,22 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
 name = "serde"
-version = "1.0.202"
+version = "1.0.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "226b61a0d411b2ba5ff6d7f73a476ac4f8bb900373459cd00fab8512828ba395"
+checksum = "7253ab4de971e72fb7be983802300c30b5a7f0c2e56fab8abfc6a214307c0094"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.202"
+version = "1.0.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6048858004bcff69094cd972ed40a32500f153bd3be9f716b2eed2e8217c4838"
+checksum = "500cbc0ebeb6f46627f50f3f5811ccf6bf00643be300b4c3eabc0ef55dc5b5ba"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -146,9 +146,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.64"
+version = "2.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ad3dee41f36859875573074334c200d1add8e4a87bb37113ebd31d926b7b11f"
+checksum = "c42f3f41a2de00b01c0aaad383c5a45241efc8b2d1eda5661812fda5f3cdcff5"
 dependencies = [
  "proc-macro2",
  "quote",

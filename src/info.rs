@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     error::{ManycoreError, ManycoreErrorKind},
-    Core, Directions, ManycoreSystem, WithID, WithXMLAttributes, ID_KEY,
+    Core, ManycoreSystem, WithID, WithXMLAttributes, ID_KEY,
 };
 
 static TASK_KEY: &'static str = "@allocatedTask";
